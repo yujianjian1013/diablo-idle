@@ -47,6 +47,7 @@
     cam: { x: 0, y: 0 },
     camInit: false,
     shake: 0,
+    shakeEnabled: true,
     floats: [],
     parts: [],
     ripples: [],
@@ -318,7 +319,7 @@
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       ctx.fillStyle = '#050403';
       ctx.fillRect(0, 0, W, H);
-      if (this.shake > 0.2) {
+      if (this.shakeEnabled !== false && this.shake > 0.2) {
         ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
       }
       if (!state.run) return;

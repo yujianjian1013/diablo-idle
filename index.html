@@ -44,7 +44,7 @@
       </div>
     </div>
     <div class="gold"><span class="icon">◈</span><span id="goldText">0</span></div>
-    <button id="btnSound" class="sound" title="音效开关">音效 开</button>
+    <button id="btnSettings" class="sound" title="设置">设 置</button>
   </header>
 
   <!-- 主区 -->
@@ -107,6 +107,33 @@
 </div>
 
 <div id="tooltip"></div>
+
+<div id="settingsModal" class="settings-modal">
+  <div class="settings-box">
+    <h2>设 置</h2>
+    <div class="setting-row">
+      <span class="sr-label">音效</span>
+      <label class="switch"><input type="checkbox" id="optSound" checked><span class="slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <span class="sr-label">音量</span>
+      <input type="range" id="optVolume" min="0" max="100" value="70" class="vol-range">
+      <span id="optVolumeText" class="sr-val">70</span>
+    </div>
+    <div class="setting-row">
+      <span class="sr-label">屏幕震动</span>
+      <label class="switch"><input type="checkbox" id="optShake" checked><span class="slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <span class="sr-label">版本</span>
+      <span id="optVersion" class="sr-val">v3</span>
+    </div>
+    <div class="setting-actions">
+      <button id="btnSettingsClose">关 闭</button>
+      <button id="btnClearSave" class="danger">清除存档</button>
+    </div>
+  </div>
+</div>
 
 <div id="introModal" class="intro-modal">
   <div class="intro-box">

@@ -716,3 +716,48 @@ button.skill-btn.passive {
   border-top: 1px solid #2a2014;
   padding-top: 5px;
 }
+/* 设置面板 */
+.settings-modal {
+  position: fixed; inset: 0; z-index: 270;
+  display: none; place-items: center;
+  background: rgba(0, 0, 0, 0.84);
+}
+.settings-modal.show { display: grid; }
+.settings-box {
+  width: 380px;
+  padding: 22px;
+  background: linear-gradient(180deg, #1d1712, #0f0b07);
+  border: 1px solid var(--line-hot);
+  border-radius: 3px;
+  box-shadow: 0 0 60px -10px rgba(200, 140, 30, 0.3);
+}
+.settings-box h2 {
+  font-size: 18px; font-weight: normal; color: var(--gold);
+  letter-spacing: 8px; text-align: center; margin-bottom: 18px;
+}
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px dotted rgba(90, 70, 40, 0.22);
+  font-size: 13px; color: #b8a888;
+}
+.setting-row .sr-label { color: #8a7a62; }
+.setting-row .sr-val { color: #c9a227; font-size: 12px; min-width: 34px; text-align: right; }
+.vol-range { flex: 1; margin: 0 10px; accent-color: #c9a227; }
+
+.switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: #2a2014; border: 1px solid #3a2c1d; border-radius: 20px;
+  transition: 0.18s;
+}
+.switch .slider::before {
+  content: ""; position: absolute; height: 14px; width: 14px; left: 2px; top: 2px;
+  background: #7a6a54; border-radius: 50%; transition: 0.18s;
+}
+.switch input:checked + .slider { background: #4a3a1c; border-color: #6b4f2a; }
+.switch input:checked + .slider::before { transform: translateX(19px); background: #e8c874; }
+
+.setting-actions { display: flex; gap: 8px; margin-top: 18px; }
+.setting-actions button { flex: 1; padding: 9px; }

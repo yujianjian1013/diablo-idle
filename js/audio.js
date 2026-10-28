@@ -7,6 +7,7 @@
 
   let ctx = null, master = null, ready = false;
   let enabled = true;
+  let volume = 1;
 
   function init() {
     if (ctx) return;
@@ -118,6 +119,11 @@
       if (fn) fn();
     },
     setEnabled(v) { enabled = !!v; },
+    setVolume(v) {
+      volume = Math.max(0, Math.min(1, v));
+      if (master) master.gain.value = 0.5 * volume;
+    },
+    getVolume() { return volume; },
     isEnabled() { return enabled; },
     available() { init(); return !!ctx; },
   };

@@ -283,21 +283,61 @@
       });
     }
 
-    // 音效开关
-    const btnSound = document.getElementById('btnSound');
-    if (window.SOUND) window.SOUND.setEnabled(true);
-    function syncSound() {
-      const on = window.SOUND ? window.SOUND.isEnabled() : false;
-      btnSound.textContent = on ? '音效 开' : '音效 关';
-      btnSound.className = 'sound' + (on ? ' on' : '');
+    // 设置面板
+    const settingsModal = document.getElementById('settingsModal');
+    const optSound = document.getElementById('optSound');
+    const optVolume = document.getElementById('optVolume');
+    const optVolumeText = document.getElementById('optVolumeText');
+    const optShake = document.getElementById('optShake');
+    const optVersion = document.getElementById('optVersion');
+    const btnSettings = document.getElementById('btnSettings');
+
+    if (optVersion) optVersion.textContent = 'v' + C.VERSION;
+    if (btnSettings) {
+      btnSettings.onclick = function () {
+        if (window.SOUND) {
+          optSound.checked = window.SOUND.isEnabled();
+          optVolume.value = Math.round((window.SOUND.getVolume() || 1) * 100);
+          optVolumeText.textContent = optVolume.value;
+        }
+        if (optShake) optShake.checked = UI.Scene.shakeEnabled !== false;
+        settingsModal.classList.add('show');
+      };
     }
-    btnSound.onclick = function () {
-      if (!window.SOUND) return;
-      window.SOUND.setEnabled(!window.SOUND.isEnabled());
-      syncSound();
-      if (window.SOUND.isEnabled()) window.SOUND.play('click');
-    };
-    syncSound();
+    if (optSound) {
+      optSound.onchange = function () {
+        if (window.SOUND) window.SOUND.setEnabled(optSound.checked);
+      };
+    }
+    if (optVolume) {
+      optVolume.oninput = function () {
+        const v = Number(optVolume.value);
+        optVolumeText.textContent = v;
+        if (window.SOUND) window.SOUND.setVolume(v / 100);
+      };
+    }
+    if (optShake) {
+      optShake.onchange = function () {
+        UI.Scene.shakeEnabled = optShake.checked;
+      };
+    }
+    const btnSettingsClose = document.getElementById('btnSettingsClose');
+    if (btnSettingsClose) {
+      btnSettingsClose.onclick = function () { settingsModal.classList.remove('show'); };
+    }
+    const btnClearSave = document.getElementById('btnClearSave');
+    if (btnClearSave) {
+      btnClearSave.onclick = function () {
+        if (!confirm('确定清除存档？当前进度会全部丢失。')) return;
+        C.resetSave();
+        localStorage.removeItem('diablo_intro_seen');
+        settingsModal.classList.remove('show');
+        showHome();
+      };
+    }
+
+    // 音效默认开启（开关移到设置面板）
+    if (window.SOUND) window.SOUND.setEnabled(true);
 
     // 键盘快捷键
     window.addEventListener('keydown', function (e) {
