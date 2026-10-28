@@ -52,6 +52,10 @@
       case 'block':
         if (S) S.play('block');
         break;
+      case 'bossSkill':
+        if (S) S.play('boss');
+        UI.showBanner(ev.name + ' · -' + UI.fmt(ev.dmg), true);
+        break;
       case 'dodge':
         if (S) S.play('dodge');
         break;

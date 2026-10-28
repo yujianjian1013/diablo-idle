@@ -198,6 +198,12 @@
         case 'thorns':
           if (ev.monster) this.addFloat(ev.monster.x, ev.monster.y, '反伤 ' + fmt(ev.dmg), '#ffd070', 12, 38);
           break;
+        case 'bossSkill':
+          this.shake = Math.max(this.shake, 9);
+          this.ripples.push({ x: ev.x, y: ev.y, t: 0, big: true });
+          this.addFloat(ev.x, ev.y, ev.name + '！', '#ff4a2a', 22, 90);
+          this.addFloat(this._px, this._py, '-' + fmt(ev.dmg), '#ff5252', 18, 52);
+          break;
         case 'block':
           this.addFloat(this._px, this._py, '格挡', '#9ad0ff', 14, 46);
           break;

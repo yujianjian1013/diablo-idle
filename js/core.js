@@ -385,6 +385,7 @@
       ranged: !!tpl.ranged,
       range: tpl.range || 5,
       isBoss: !!isBoss,
+      bossCd: 6 + rnd(0, 3),
       alive: true,
       atkCd: rnd(0.6, 1.6),
       path: [],
@@ -1151,6 +1152,23 @@
 
       const mRange = m.ranged ? (m.range || 5) : MONSTER_ATTACK_RANGE;
       const mMin = m.ranged ? 2.2 : 0;
+
+      // BOSS 技能：践踏（周期性范围重击）
+      if (m.isBoss) {
+        m.bossCd = (m.bossCd || 0) - dt;
+        if (m.bossCd <= 0 && d < 9) {
+          m.bossCd = 11 + rnd(0, 3);
+          const bReduce = s.def / (s.def + 26 + state.player.floor * 5);
+          let bShield = 1 - Math.min(50, s.dmgReduce || 0) / 100;
+          if (r.buffs && r.buffs.divineShield > 0) bShield *= 0.6;
+          const bDmg = Math.max(1, Math.round(m.atk * 1.25 * (1 - bReduce) * bShield));
+          state.player.hp -= bDmg;
+          m.attackAnim = 0.5;
+          events.push({ type: 'bossSkill', name: '践踏', dmg: bDmg, x: m.x, y: m.y });
+          events.push({ type: 'playerHurt', dmg: bDmg, source: m });
+          if (state.player.hp <= 0) { playerDies(state, events); break; }
+        }
+      }
 
       if (m.ranged && d < mMin) {
         // 远程怪被贴脸：后撤
