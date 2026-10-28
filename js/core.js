@@ -53,6 +53,16 @@
     const cls = DATA.CLASSES[state.player.cls];
     return (cls && cls.attackRange) || PLAYER_ATTACK_RANGE;
   }
+
+  /** 当前职业的视野半径（格） */
+  function sightOf(state) {
+    const cls = DATA.CLASSES[state.player.cls];
+    return (cls && cls.sight) || 6;
+  }
+
+  function isRanged(state) {
+    return attackRangeOf(state) > 3.5;
+  }
   const MONSTER_ATTACK_RANGE = 1.25;  // 怪物近战半径
   const MONSTER_ATK_INTERVAL = 1.7;
   const MONSTER_AGGRO_RANGE = 9;      // 仇恨范围
@@ -386,7 +396,7 @@
     state.player.floor = floor;
     state.player.bestFloor = Math.max(state.player.bestFloor, floor);
     state.player.hp = state.stats.hpMax;
-    MAP.reveal(map, run.pos.x, run.pos.y, 6);
+    MAP.reveal(map, run.pos.x, run.pos.y, sightOf(state));
     return run;
   }
 
@@ -522,7 +532,7 @@
         r.pos.x = tx; r.pos.y = ty;
         r.path.shift();
         remain -= d;
-        MAP.reveal(r.map, r.pos.x, r.pos.y, 5);
+        MAP.reveal(r.map, r.pos.x, r.pos.y, sightOf(state));
       } else {
         r.pos.x += (dx / d) * remain;
         r.pos.y += (dy / d) * remain;
@@ -577,7 +587,7 @@
     m.hp -= hit.dmg;
     m.hurtT = 0.25;
     let totalLeech = hit.dmg;
-    events.push({ type: 'swing', x: r.pos.x, y: r.pos.y, count: 1 + (s.splash > 0 ? 1 : 0) });
+    events.push({ type: 'swing', x: r.pos.x, y: r.pos.y, tx: m.x, ty: m.y, ranged: isRanged(state), count: 1 + (s.splash > 0 ? 1 : 0) });
     events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, main: true });
     if (m.hp <= 0) killMonster(state, m, events);
 
@@ -656,7 +666,7 @@
         events.push({ type: 'dot', monster: t, dur: def.dot.dur });
       }
       if (t.hp <= 0) killMonster(state, t, events);
-      events.push({ type: 'skill', key: key, x: t.x, y: t.y });
+      events.push({ type: 'skill', key: key, x: t.x, y: t.y, ranged: isRanged(state), tx: t.x, ty: t.y });
 
     } else if (def.range === 'charge') {
       const near = nearestMonster(r, 12, r.blacklist, true);
@@ -672,7 +682,7 @@
           r.pos.x = nx;
           r.pos.y = ny;
           r.path = [];
-          MAP.reveal(r.map, nx, ny, 5);
+          MAP.reveal(r.map, nx, ny, sightOf(state));
         }
       }
       let n = 0;
@@ -726,7 +736,7 @@
         events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
         if (m.hp <= 0) killMonster(state, m, events);
       }
-      events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, radius: def.radius, count: picks.length });
+      events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, radius: def.radius, count: picks.length, ranged: isRanged(state), tx: picks[0].m.x, ty: picks[0].m.y });
 
     } else if (def.range === 'escape') {
       // 后跳：远离最近的敌人

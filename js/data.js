@@ -115,6 +115,7 @@
       base: { str: 18, agi: 12, vit: 16, int: 6 },
       growth: { str: 2.8, agi: 1.2, vit: 1.8, int: 1.0 },
       atkCoef: 2.0,
+      sight: 6,
       skillPool: [
         'heroicStrike', 'whirlwind', 'charge', 'thunderClap', 'mortalStrike', 'recklessness',
         'secondWind', 'splatter', 'brutalCrit', 'bloodthirst',
@@ -131,6 +132,7 @@
       growth: { str: 1.2, agi: 2.4, vit: 1.2, int: 1.0 },
       atkCoef: 1.6,
       attackRange: 5.5,
+      sight: 10,
       skillPool: [
         'steadyShot', 'multiShot', 'serpentSting', 'disengage', 'trap', 'rapidFire',
         'precision', 'combo', 'evasion', 'huntersMark',

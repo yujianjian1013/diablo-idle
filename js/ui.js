@@ -51,6 +51,7 @@
     parts: [],
     ripples: [],
     dying: [],
+    projectiles: [],
     flash: 0,
     flashColor: '255,220,140',
     hurtFlash: 0,
@@ -143,7 +144,11 @@
       switch (ev.type) {
         case 'swing':
           this.swingT = 0.35;
-          this.ripples.push({ x: ev.x, y: ev.y, t: 0 });
+          if (ev.ranged && ev.tx !== undefined) {
+            this.projectiles.push({ x1: ev.x, y1: ev.y, x2: ev.tx, y2: ev.ty, t: 0 });
+          } else {
+            this.ripples.push({ x: ev.x, y: ev.y, t: 0 });
+          }
           break;
         case 'hit':
           if (ev.splash) {
@@ -180,6 +185,9 @@
           }
           break;
         case 'skill':
+          if (ev.ranged && ev.tx !== undefined) {
+            this.projectiles.push({ x1: this._px, y1: this._py, x2: ev.tx, y2: ev.ty, t: 0, big: true });
+          }
           if (ev.key === 'whirlwind') {
             this.ripples.push({ x: ev.x, y: ev.y, t: 0, big: true });
             this.shake = Math.max(this.shake, 5);
@@ -218,6 +226,7 @@
       if (!state.run) return;
       const p = state.run.pos;
       this._px = p.x; this._py = p.y;
+      this._cls = state.player.cls;
 
       if (Math.abs(p.x - this.mmLastX) + Math.abs(p.y - this.mmLastY) > 0.35) {
         this.mmLastX = p.x; this.mmLastY = p.y;
@@ -251,6 +260,10 @@
       for (let i = this.ripples.length - 1; i >= 0; i--) {
         this.ripples[i].t += dt;
         if (this.ripples[i].t > 0.4) this.ripples.splice(i, 1);
+      }
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        this.projectiles[i].t += dt * 4.5;
+        if (this.projectiles[i].t >= 1) this.projectiles.splice(i, 1);
       }
       for (let i = this.dying.length - 1; i >= 0; i--) {
         this.dying[i].t -= dt * 1.7;
@@ -294,6 +307,43 @@
         ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
       }
       ctx.globalAlpha = 1;
+
+      // 箭矢弹道
+      for (let i = 0; i < this.projectiles.length; i++) {
+        const pr = this.projectiles[i];
+        const k = Math.min(1, pr.t);
+        const gx = pr.x1 + (pr.x2 - pr.x1) * k;
+        const gy = pr.y1 + (pr.y2 - pr.y1) * k;
+        const a = this.worldToScreen(gx, gy);
+        const b = this.worldToScreen(pr.x2, pr.y2);
+        const ang = Math.atan2(b.y - a.y, b.x - a.x);
+        const size = pr.big ? 1.5 : 1;
+        ctx.save();
+        ctx.translate(a.x, a.y - 20);
+        ctx.rotate(ang);
+        // 拖尾
+        const tail = ctx.createLinearGradient(-38 * size, 0, 8 * size, 0);
+        tail.addColorStop(0, 'rgba(255,220,140,0)');
+        tail.addColorStop(1, 'rgba(255,235,180,0.9)');
+        ctx.strokeStyle = tail;
+        ctx.lineWidth = 3.2 * size;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-38 * size, 0);
+        ctx.lineTo(8 * size, 0);
+        ctx.stroke();
+        // 箭头
+        ctx.shadowColor = '#ffd77a';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#fff6d8';
+        ctx.beginPath();
+        ctx.moveTo(12 * size, 0);
+        ctx.lineTo(4 * size, -4 * size);
+        ctx.lineTo(4 * size, 4 * size);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
 
       for (let i = 0; i < this.floats.length; i++) {
         const f = this.floats[i];
@@ -584,7 +634,7 @@
         // 迷雾里的怪不画（保持探索感，也避免怪物浮在黑底上）
         const ti = Math.floor(m.y) * map.w + Math.floor(m.x);
         if (!map.explored[ti]) continue;
-        if (C.dist(m, run.pos) > 13) continue;
+        if (C.dist(m, run.pos) > 18) continue;
         const offX = (hash2(m.id, 7) - 0.5) * 0.34;
         const offY = (hash2(m.id, 13) - 0.5) * 0.34;
         const p = this.worldToScreen(m.x + offX, m.y + offY);
@@ -779,26 +829,64 @@
       ctx.fillStyle = '#ffb347';
       ctx.fillRect(px + 1, y - 36 + bob, 1.8, 1.5);
 
-      ctx.save();
-      ctx.translate(px + 7, y - 24 + bob);
-      ctx.rotate(-0.6 + swing * 1.4);
-      const bladeG = ctx.createLinearGradient(0, -20, 0, 3);
-      bladeG.addColorStop(0, '#f0f4ff');
-      bladeG.addColorStop(1, '#7a8598');
-      ctx.fillStyle = bladeG;
-      ctx.beginPath();
-      ctx.moveTo(-1.2, 0);
-      ctx.lineTo(-1.6, -22);
-      ctx.lineTo(0, -26);
-      ctx.lineTo(1.6, -22);
-      ctx.lineTo(1.2, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#c9a227';
-      ctx.fillRect(-3.5, -2, 7, 2.4);
-      ctx.restore();
+      if (this._cls === 'ranger') {
+        // 游侠：拉弓
+        const pull = swing;
+        ctx.save();
+        ctx.translate(px + 5, y - 24 + bob);
+        ctx.rotate(-0.15);
+        ctx.strokeStyle = '#8a6a3a';
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(0, 0, 13, -Math.PI * 0.52, Math.PI * 0.52);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(230,225,205,0.75)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, -13);
+        ctx.lineTo(-2 - pull * 5, 0);
+        ctx.lineTo(0, 13);
+        ctx.stroke();
+        if (pull > 0.05) {
+          ctx.strokeStyle = '#e8d8b0';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(-2 - pull * 5, 0);
+          ctx.lineTo(14, 0);
+          ctx.stroke();
+          ctx.fillStyle = '#fff6d8';
+          ctx.beginPath();
+          ctx.moveTo(15, 0);
+          ctx.lineTo(10, -2.6);
+          ctx.lineTo(10, 2.6);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      } else {
+        // 战士：剑
+        ctx.save();
+        ctx.translate(px + 7, y - 24 + bob);
+        ctx.rotate(-0.6 + swing * 1.4);
+        const bladeG = ctx.createLinearGradient(0, -20, 0, 3);
+        bladeG.addColorStop(0, '#f0f4ff');
+        bladeG.addColorStop(1, '#7a8598');
+        ctx.fillStyle = bladeG;
+        ctx.beginPath();
+        ctx.moveTo(-1.2, 0);
+        ctx.lineTo(-1.6, -22);
+        ctx.lineTo(0, -26);
+        ctx.lineTo(1.6, -22);
+        ctx.lineTo(1.2, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#c9a227';
+        ctx.fillRect(-3.5, -2, 7, 2.4);
+        ctx.restore();
+      }
 
-      if (swing > 0.3) {
+      if (swing > 0.3 && this._cls !== 'ranger') {
         ctx.save();
         ctx.globalAlpha = swing * 0.5;
         ctx.strokeStyle = '#fff8e0';
