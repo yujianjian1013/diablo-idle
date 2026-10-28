@@ -418,8 +418,8 @@ button.danger:hover { border-color: var(--blood); color: #e06060; }
   #app { grid-template-rows: 54px 1fr 180px; }
 }
 @media (max-width: 860px) {
-  html, body { overflow: auto; }
-  #app { height: auto; grid-template-rows: auto auto auto; }
+  html, body { height: auto; overflow-x: hidden; overflow-y: auto; }
+  #app { height: auto; min-height: 100vh; grid-template-rows: auto auto auto; }
   main { grid-template-columns: 1fr; }
   #battlePanel { height: 46vh; }
   #side { grid-template-rows: auto auto; }
