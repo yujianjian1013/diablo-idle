@@ -250,6 +250,7 @@
       lifesteal: pas.lifesteal,
       goldFind: 0, magicFind: 0,
       splash: pas.splash, splashRadiusPct: 0,
+      resGainPct: 0, cdr: 0,
       mpMax: Math.round(st.int * S.int.mpPerPoint),
       mpRegen: (S.int.mpRegenBase || 0) + st.int * S.int.mpRegenPerPoint,
       skillEffect: Math.round(st.int * S.int.skillEffectPerPoint * 10) / 10,
@@ -284,6 +285,11 @@
           case 'magicFind': s.magicFind += v; break;
           case 'splash': s.splash += v; break;
           case 'splashRadius': s.splashRadiusPct += v; break;
+          case 'cdr': s.cdr += v; break;
+          case 'rageRegen': if (cls.resource === 'rage') s.resGainPct += v; break;
+          case 'energyRegen': if (cls.resource === 'energy') s.resGainPct += v; break;
+          case 'holyRegen': if (cls.resource === 'holy') s.resGainPct += v; break;
+          case 'manaRegen': if (cls.resource === 'mana') s.resGainPct += v; break;
         }
       }
     }
@@ -308,6 +314,8 @@
     s.splashRadius = Math.round(SPLASH_BASE_RADIUS * (1 + s.splashRadiusPct / 100) * 100) / 100;
     s.attackInterval = PLAYER_ATK_INTERVAL / (1 + s.atkSpeedPct / 100);
     s.secondChance = Math.round(s.secondChance * 10) / 10;
+    s.cdr = Math.round(s.cdr * 10) / 10;
+    s.resGainPct = Math.round(s.resGainPct * 10) / 10;
     // 法师：魔法上限吃智力与「法力涌动」被动
     s.mpMax = Math.round(s.mpMax * (1 + (pas.mpPct || 0) / 100));
     s.mpRegen = Math.round(s.mpRegen * (1 + (pas.mpRegenPct || 0) / 100) * 10) / 10;
@@ -638,7 +646,7 @@
     // 普通攻击命中获得怒气
     const rcls = DATA.CLASSES[state.player.cls];
     const hitGain = (rcls && rcls.resource === 'holy') ? 2 : RAGE_ON_HIT;
-    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + hitGain);
+    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + hitGain * (1 + (s.resGainPct || 0) / 100));
 
     let atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
     if (r.buffs && r.buffs.avengingWrath > 0) atkMul *= 1.5;
@@ -873,7 +881,7 @@
     }
 
     p.rage = Math.max(0, (p.rage || 0) - def.cost);
-    r.skillCds[key] = def.cd || 0;
+    r.skillCds[key] = (def.cd || 0) * (1 - Math.min(90, s.cdr || 0) / 100);
     r.gcd = GLOBAL_CAST_CD;
     return events;
   }
@@ -1005,7 +1013,7 @@
     state.player.hp -= dmg;
     const hcls = DATA.CLASSES[state.player.cls];
     const hurtGain = (hcls && hcls.resource === 'holy') ? 2 : RAGE_ON_HURT;
-    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + hurtGain);
+    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + hurtGain * (1 + (s.resGainPct || 0) / 100));
     m.attackAnim = 0.3;
     if (m.ranged) {
       events.push({ type: 'monsterShot', from: m, dmg: dmg });
@@ -1075,12 +1083,13 @@
 
     // 资源自然回复（游侠集中值）
     const clsDef = DATA.CLASSES[state.player.cls];
+    const resMul = 1 + (s.resGainPct || 0) / 100;
     if (clsDef && clsDef.resource === 'energy') {
-      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 8 * dt);
+      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 8 * resMul * dt);
     } else if (clsDef && clsDef.resource === 'mana') {
-      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + (s.mpRegen || 1) * dt);
+      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + (s.mpRegen || 1) * resMul * dt);
     } else if (clsDef && clsDef.resource === 'holy') {
-      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 3 * dt);
+      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 3 * resMul * dt);
     }
 
     // 玩家思考

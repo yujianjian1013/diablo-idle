@@ -45,6 +45,11 @@
     magicFind: { key: 'magicFind', name: '寻宝几率', weight: 7,  base: [2, 6],    scale: 0.50, pct: true,  prefix: ['幸运的', '探宝者的'], suffix: ['之幸'] },
     splash:       { key: 'splash',       name: '溅射伤害', weight: 15, base: [3, 6],   scale: 0.50, pct: true, prefix: ['裂开的', '震荡的', '回响的'], suffix: ['之裂'] },
     splashRadius: { key: 'splashRadius', name: '溅射范围', weight: 10, base: [8, 14],   scale: 0.35, pct: true, prefix: ['扩散的', '波及的', '环流的'], suffix: ['之散'] },
+    rageRegen:   { key: 'rageRegen',   name: '怒气回复', weight: 6, base: [6, 12],  scale: 0.4, pct: true, prefix: ['愤怒的', '暴烈的'], suffix: ['之怒'] },
+    energyRegen: { key: 'energyRegen', name: '集中值回复', weight: 6, base: [6, 12], scale: 0.4, pct: true, prefix: ['专注的', '沉静的'], suffix: ['之息'] },
+    holyRegen:   { key: 'holyRegen',   name: '圣能回复', weight: 6, base: [6, 12],  scale: 0.4, pct: true, prefix: ['虔诚的', '神圣的'], suffix: ['之光'] },
+    manaRegen:   { key: 'manaRegen',   name: '魔法回复', weight: 6, base: [6, 12],  scale: 0.4, pct: true, prefix: ['奥术的', '灵性的'], suffix: ['之泉'] },
+    cdr:         { key: 'cdr',         name: '技能冷却缩减', weight: 8, base: [3, 7], scale: 0.4, pct: true, prefix: ['迅捷的', '狡诈的'], suffix: ['之捷'] },
   };
   const AFFIX_KEYS = Object.keys(AFFIXES);
 
@@ -507,13 +512,13 @@
   // 每件装备只从对应部位的池子里抽词条，避免"所有装备都一样"
   const SLOT_AFFIX_POOL = {
     weapon: ['atk', 'crit', 'critDmg', 'atkSpeed', 'lifesteal', 'splash'],
-    helmet: ['hp', 'def', 'crit', 'magicFind'],
+    helmet: ['hp', 'def', 'crit', 'magicFind', 'cdr'],
     armor:  ['hp', 'def', 'magicFind'],
     gloves: ['atk', 'atkSpeed', 'crit', 'critDmg', 'splash'],
     boots:  ['hp', 'def', 'splashRadius', 'goldFind'],
-    amulet: ['crit', 'critDmg', 'goldFind', 'magicFind', 'splash'],
-    ring1:  ['atk', 'crit', 'splash', 'splashRadius', 'goldFind', 'magicFind', 'lifesteal'],
-    ring2:  ['atk', 'crit', 'splash', 'splashRadius', 'goldFind', 'magicFind', 'lifesteal'],
+    amulet: ['crit', 'critDmg', 'goldFind', 'magicFind', 'splash', 'cdr', 'rageRegen', 'energyRegen', 'holyRegen', 'manaRegen'],
+    ring1:  ['atk', 'crit', 'splash', 'splashRadius', 'goldFind', 'magicFind', 'lifesteal', 'rageRegen', 'energyRegen', 'holyRegen', 'manaRegen'],
+    ring2:  ['atk', 'crit', 'splash', 'splashRadius', 'goldFind', 'magicFind', 'lifesteal', 'rageRegen', 'energyRegen', 'holyRegen', 'manaRegen'],
   };
   const DATA = {
     QUALITY: QUALITY,
