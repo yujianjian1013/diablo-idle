@@ -60,7 +60,7 @@
     mmDirty: true,
     mmLastX: 0, mmLastY: 0,
     mmCanvas: null, mmCtx: null,
-    mmSize: 158,
+    mmW: 158, mmH: 93,
 
     init(canvas) {
       this.canvas = canvas;
@@ -82,11 +82,11 @@
       this.canvas.style.width = this.W + 'px';
       this.canvas.style.height = this.H + 'px';
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      this.mmSize = Math.round(Math.max(104, Math.min(158, this.W * 0.26)));
+      this.mmW = Math.round(Math.max(110, Math.min(168, this.W * 0.28)));
+      this.mmH = Math.round(this.mmW / 2 + 14);
       if (this.mmCanvas) {
-        const px2 = Math.round(this.mmSize * this.dpr);
-        this.mmCanvas.width = px2;
-        this.mmCanvas.height = px2;
+        this.mmCanvas.width = Math.round(this.mmW * this.dpr);
+        this.mmCanvas.height = Math.round(this.mmH * this.dpr);
         this.mmDirty = true;
       }
     },
@@ -289,23 +289,28 @@
       this.drawMinimap(ctx, map, run);
     },
 
-    /* ---------- 小地图 ---------- */
+    /* ---------- 小地图（等距投影，和主画面方位一致） ---------- */
     drawMinimap(ctx, map, run) {
-      const size = this.mmSize;
-      const x0 = this.W - size - 14;
+      const mw = this.mmW, mh = this.mmH;
+      const x0 = this.W - mw - 14;
       const y0 = 14;
-      const cell = size / Math.max(map.w, map.h);
+      const cw = mw / map.w;
+      const ch = cw / 2;
+      const cyc = (map.w + map.h - 2) / 2;
 
       if (this.mmDirty) {
-        this.rebuildMinimap(map, size, cell);
+        this.rebuildMinimap(map, mw, mh, cw, ch, cyc);
         this.mmDirty = false;
       }
 
       ctx.save();
       // 底板
-      ctx.fillStyle = 'rgba(10,8,6,0.82)';
-      ctx.fillRect(x0 - 1, y0 - 1, size + 2, size + 2);
-      ctx.drawImage(this.mmCanvas, x0, y0, size, size);
+      ctx.fillStyle = 'rgba(10,8,6,0.84)';
+      ctx.fillRect(x0 - 1, y0 - 1, mw + 2, mh + 2);
+      ctx.drawImage(this.mmCanvas, x0, y0, mw, mh);
+
+      const toX = function (gx, gy) { return x0 + mw / 2 + (gx - gy) * cw / 2; };
+      const toY = function (gx, gy) { return y0 + mh / 2 + (gx + gy - cyc) * ch / 2; };
 
       // 怪物点（只画已探索区域）
       for (let i = 0; i < run.monsters.length; i++) {
@@ -315,25 +320,27 @@
         if (!map.explored[ti]) continue;
         ctx.fillStyle = m.isBoss ? '#ff5a2a' : '#d24a4a';
         ctx.beginPath();
-        ctx.arc(x0 + (m.x + 0.5) * cell, y0 + (m.y + 0.5) * cell, m.isBoss ? 3.4 : 2.1, 0, Math.PI * 2);
+        ctx.arc(toX(m.x, m.y), toY(m.x, m.y), m.isBoss ? 3.2 : 1.9, 0, Math.PI * 2);
         ctx.fill();
       }
 
       // 玩家（呼吸光点）
+      const px = toX(run.pos.x, run.pos.y);
+      const py = toY(run.pos.x, run.pos.y);
       const pulse = 0.65 + Math.sin(this.t * 4) * 0.35;
-      ctx.fillStyle = 'rgba(255, 214, 90, ' + (0.35 * pulse) + ')';
+      ctx.fillStyle = 'rgba(255, 214, 90, ' + (0.32 * pulse) + ')';
       ctx.beginPath();
-      ctx.arc(x0 + run.pos.x * cell, y0 + run.pos.y * cell, 7, 0, Math.PI * 2);
+      ctx.arc(px, py, 7, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffd750';
       ctx.beginPath();
-      ctx.arc(x0 + run.pos.x * cell, y0 + run.pos.y * cell, 2.8, 0, Math.PI * 2);
+      ctx.arc(px, py, 2.8, 0, Math.PI * 2);
       ctx.fill();
 
       // 边框 + 标题
       ctx.strokeStyle = 'rgba(140,116,80,0.6)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(x0 + 0.5, y0 + 0.5, size - 1, size - 1);
+      ctx.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
       ctx.font = '10px "Songti SC", Georgia, serif';
       ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(150,130,100,0.85)';
@@ -341,23 +348,28 @@
       ctx.restore();
     },
 
-    rebuildMinimap(map, size, cell) {
+    rebuildMinimap(map, mw, mh, cw, ch, cyc) {
       const c = this.mmCtx;
       c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      c.clearRect(0, 0, size, size);
+      c.clearRect(0, 0, mw, mh);
       for (let y = 0; y < map.h; y++) {
         for (let x = 0; x < map.w; x++) {
           const i = y * map.w + x;
           const t = map.tiles[i];
           const seen = map.explored[i];
-          if (t === M.TILE.WALL) {
-            c.fillStyle = seen ? '#3a332b' : 'rgba(66,58,48,0.34)';
-          } else if (t === M.TILE.EXIT) {
-            c.fillStyle = seen ? '#c9a227' : 'rgba(120,96,40,0.4)';
-          } else {
-            c.fillStyle = seen ? '#5f5241' : 'rgba(70,60,48,0.16)';
-          }
-          c.fillRect(x * cell, y * cell, cell + 0.6, cell + 0.6);
+          // 等距坐标：和主画面同一个 45° 视角
+          const cx = mw / 2 + (x - y) * cw / 2;
+          const cy = mh / 2 + (x + y - cyc) * ch / 2;
+          c.beginPath();
+          c.moveTo(cx, cy - ch / 2 - 0.15);
+          c.lineTo(cx + cw / 2 + 0.25, cy);
+          c.lineTo(cx, cy + ch / 2 + 0.15);
+          c.lineTo(cx - cw / 2 - 0.25, cy);
+          c.closePath();
+          if (t === M.TILE.WALL) c.fillStyle = seen ? '#3a332b' : 'rgba(66,58,48,0.34)';
+          else if (t === M.TILE.EXIT) c.fillStyle = seen ? '#c9a227' : 'rgba(120,96,40,0.4)';
+          else c.fillStyle = seen ? '#5f5241' : 'rgba(70,60,48,0.16)';
+          c.fill();
         }
       }
     },
