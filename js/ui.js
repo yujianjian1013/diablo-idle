@@ -1093,6 +1093,7 @@
     els.skillBar = $('skillBar');
     els.rageFill = $('rageFill');
     els.rageText = $('rageText');
+    els.resLabel = $('resLabel');
     tooltipEl = $('tooltip');
     Scene.init($('scene'));
   }
@@ -1190,6 +1191,11 @@
       els.floorProgress.textContent = alive > 0 ? ('剩余 ' + alive + ' 只') : '已清空 · 找出口';
     }
     els.bestFloor.textContent = '最深：第 ' + p.bestFloor + ' 层';
+    const clsDef = C.CLASSES[p.cls];
+    if (els.resLabel && clsDef) {
+      const resName = { rage: '怒气', energy: '集中值', holy: '圣能', mana: '魔法' }[clsDef.resource] || '资源';
+      if (els.resLabel.textContent !== resName) els.resLabel.textContent = resName;
+    }
     const rage = p.rage || 0;
     const rageMax = p.rageMax || 100;
     if (els.rageFill) els.rageFill.style.width = Math.min(100, (rage / rageMax) * 100) + '%';
@@ -1205,6 +1211,8 @@
     const r = state.run;
     const skills = p.skills || [];
     const rage = p.rage || 0;
+    const clsDef = C.CLASSES[p.cls] || {};
+    const resName = { rage: '怒气', energy: '集中值', holy: '圣能', mana: '魔法' }[clsDef.resource] || '资源';
     let html = '';
     for (let i = 0; i < 5; i++) {
       const key = skills[i];
@@ -1222,8 +1230,8 @@
       const canCast = cd <= 0.05 && rage >= def.cost;
       let sub;
       if (cd > 0.05) sub = Math.ceil(cd) + 's';
-      else if (rage < def.cost) sub = '怒气不足';
-      else sub = def.cost + ' 怒气';
+      else if (rage < def.cost) sub = resName + '不足';
+      else sub = def.cost + ' ' + resName;
       html += '<button class="skill-btn ' + (canCast ? 'ready' : 'cooling') + '" data-slot="' + i +
         '" title="' + def.desc + '">' + def.name +
         '<br><span style="opacity:.75">' + sub + '</span></button>';

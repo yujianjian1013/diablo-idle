@@ -121,6 +121,22 @@
       ],
       defaultSkills: ['whirlwind', 'thunderClap', 'recklessness', 'splatter', 'brutalCrit'],
     },
+    ranger: {
+      key: 'ranger',
+      name: '游侠',
+      desc: '以集中值为资源，远程高攻速，擅长单体点杀与风筝。',
+      mainStat: 'agi',
+      resource: 'energy',
+      base: { str: 12, agi: 18, vit: 12, int: 10 },
+      growth: { str: 1.2, agi: 2.4, vit: 1.2, int: 1.0 },
+      atkCoef: 1.6,
+      attackRange: 5.5,
+      skillPool: [
+        'steadyShot', 'multiShot', 'serpentSting', 'disengage', 'trap', 'rapidFire',
+        'precision', 'combo', 'evasion', 'huntersMark',
+      ],
+      defaultSkills: ['steadyShot', 'multiShot', 'serpentSting', 'rapidFire', 'precision'],
+    },
   };
 
   /* ---------------- 技能 ---------------- */
@@ -176,6 +192,57 @@
       key: 'bloodthirst', name: '吸血', type: 'passive',
       desc: '攻击时按伤害回复生命',
     },
+
+    /* ---- 游侠 ---- */
+    steadyShot: {
+      key: 'steadyShot', name: '稳固射击', type: 'active',
+      cost: 20, cd: 0, range: 'single', dmg: 1.8,
+      desc: '对主目标造成 180% 伤害',
+    },
+    multiShot: {
+      key: 'multiShot', name: '多重射击', type: 'active',
+      cost: 30, cd: 0, range: 'cone', radius: 4.5, dmg: 1.5, maxTargets: 3,
+      desc: '对前方最多 3 个敌人各造成 150% 伤害',
+    },
+    serpentSting: {
+      key: 'serpentSting', name: '毒蛇钉刺', type: 'active',
+      cost: 25, cd: 0, range: 'single', dmg: 0.3,
+      dot: { ratio: 0.4, dur: 5 },
+      desc: '造成少量伤害并附加 5 秒中毒',
+    },
+    disengage: {
+      key: 'disengage', name: '后跳', type: 'active',
+      cost: 15, cd: 8, range: 'escape', distance: 3, dmg: 1.2,
+      desc: '向后弹开 3 格并射击一次',
+    },
+    trap: {
+      key: 'trap', name: '陷阱', type: 'active',
+      cost: 35, cd: 15, range: 'trap', radius: 2.5, dmg: 2.0,
+      desc: '在脚下布置陷阱，命中的敌人受 200% 伤害并减速',
+    },
+    rapidFire: {
+      key: 'rapidFire', name: '急速射击', type: 'active',
+      cost: 40, cd: 26, range: 'buff',
+      desc: '8 秒内攻击速度 +100%、暴击率 +15%',
+    },
+
+    /* ---- 游侠被动 ---- */
+    precision: {
+      key: 'precision', name: '精准', type: 'passive',
+      desc: '提升暴击率',
+    },
+    combo: {
+      key: 'combo', name: '连击', type: 'passive',
+      desc: '连续命中同一目标时伤害递增',
+    },
+    evasion: {
+      key: 'evasion', name: '闪避', type: 'passive',
+      desc: '受到攻击有几率完全闪避',
+    },
+    huntersMark: {
+      key: 'huntersMark', name: '猎手印记', type: 'passive',
+      desc: '对高生命值目标造成额外伤害',
+    },
   };
 
   // 被动按 1 级 → 50 级线性插值
@@ -184,6 +251,10 @@
     splatter: { splash: [20, 40] },
     brutalCrit: { crit: [3, 13], critDmg: [15, 35] },
     bloodthirst: { lifesteal: [3, 15] },
+    precision: { crit: [3, 13] },
+    combo: { comboPerHit: [2, 2] },
+    evasion: { evade: [8, 18] },
+    huntersMark: { markDmg: [10, 30] },
   };
   const PASSIVE_MAX_LEVEL = 50;
 

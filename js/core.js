@@ -47,6 +47,12 @@
   const PLAYER_ATK_INTERVAL = 0.9;
   const PLAYER_ATTACK_RANGE = 2.25;   // 玩家挥砍半径（格）
   const SPLASH_BASE_RADIUS = 0.9;     // 有溅射时的基础波及半径（格）
+
+  /** 当前职业的攻击距离 */
+  function attackRangeOf(state) {
+    const cls = DATA.CLASSES[state.player.cls];
+    return (cls && cls.attackRange) || PLAYER_ATTACK_RANGE;
+  }
   const MONSTER_ATTACK_RANGE = 1.25;  // 怪物近战半径
   const MONSTER_ATK_INTERVAL = 1.7;
   const MONSTER_AGGRO_RANGE = 9;      // 仇恨范围
@@ -186,7 +192,7 @@
     const p = state.player;
     const lv = Math.max(1, Math.min(p.level, DATA.PASSIVE_MAX_LEVEL));
     const t = (lv - 1) / Math.max(1, DATA.PASSIVE_MAX_LEVEL - 1);
-    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0 };
+    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0, evade: 0, markDmg: 0, comboPerHit: 0 };
     const pool = p.skills || [];
     const lerp = function (a) { return a[0] + (a[1] - a[0]) * t; };
     for (let i = 0; i < pool.length; i++) {
@@ -198,6 +204,9 @@
       if (g.splash) out.splash += lerp(g.splash);
       if (g.chance) out.secondChance += lerp(g.chance);
       if (g.dmg) out.secondDmg = lerp(g.dmg);
+      if (g.evade) out.evade += lerp(g.evade);
+      if (g.markDmg) out.markDmg += lerp(g.markDmg);
+      if (g.comboPerHit) out.comboPerHit += lerp(g.comboPerHit);
     }
     return out;
   }
@@ -228,6 +237,9 @@
       skillEffect: Math.round(st.int * S.int.skillEffectPerPoint * 10) / 10,
       secondChance: pas.secondChance,
       secondDmg: pas.secondDmg,
+      evade: Math.min(40, pas.evade),
+      markDmg: pas.markDmg,
+      comboPerHit: pas.comboPerHit,
     };
 
     // 2. 装备词条叠加
@@ -360,7 +372,9 @@
       blacklist: {},
       skillCds: {},
       gcd: 0,
-      buffs: { berserk: 0 },
+      buffs: { berserk: 0, rapidFire: 0 },
+      comboTarget: -1,
+      comboCount: 0,
     };
     for (let i = 0; i < map.spawns.length; i++) {
       const sp = map.spawns[i];
@@ -463,7 +477,7 @@
     const p = r.pos;
 
     // 1. 攻击范围内有怪：停下来打
-    if (nearestMonster(r, PLAYER_ATTACK_RANGE)) { r.path = []; return; }
+    if (nearestMonster(r, attackRangeOf(state))) { r.path = []; return; }
 
     // 2. 目标锁定：只有目标死亡 / 不可达时才换目标，避免在两只怪之间来回震荡
     let target = r.target;
@@ -518,9 +532,10 @@
   }
 
   /** 选主目标：优先当前锁定目标，其次最近的 */
-  function pickMainTarget(r) {
-    if (r.target && r.target.alive && dist(r.target, r.pos) <= PLAYER_ATTACK_RANGE) return r.target;
-    const near = nearestMonster(r, PLAYER_ATTACK_RANGE);
+  function pickMainTarget(r, range) {
+    const rng2 = range || 99;
+    if (r.target && r.target.alive && dist(r.target, r.pos) <= rng2) return r.target;
+    const near = nearestMonster(r, rng2);
     return near ? near.monster : null;
   }
 
@@ -533,7 +548,7 @@
     const s = state.stats;
     const m = mainTarget;
     if (!m || !m.alive) return false;
-    if (dist(m, r.pos) > PLAYER_ATTACK_RANGE) return false;
+    if (dist(m, r.pos) > attackRangeOf(state)) return false;
 
     r.swingT = 0.32;
     r.swingX = r.pos.x;
@@ -543,10 +558,22 @@
     state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + RAGE_ON_HIT);
 
     const atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
-    const atk = s.atk * atkMul;
+    let atk = s.atk * atkMul;
+
+    // 猎手印记：对高生命目标增伤
+    if (s.markDmg > 0 && m.hpMax > 0 && m.hp / m.hpMax > 0.7) {
+      atk *= (1 + s.markDmg / 100);
+    }
+    // 连击：连续命中同一目标时伤害递增
+    if (s.comboPerHit > 0) {
+      if (r.comboTarget === m.id) r.comboCount = Math.min(10, (r.comboCount || 0) + 1);
+      else { r.comboTarget = m.id; r.comboCount = 1; }
+      atk *= (1 + Math.max(0, r.comboCount - 1) * s.comboPerHit / 100);
+    }
+    const critChance = s.crit + ((r.buffs && r.buffs.rapidFire > 0) ? 15 : 0);
 
     // 主目标
-    const hit = rollDamage(atk, s.crit, s.critDmg);
+    const hit = rollDamage(atk, critChance, s.critDmg);
     m.hp -= hit.dmg;
     m.hurtT = 0.25;
     let totalLeech = hit.dmg;
@@ -613,11 +640,12 @@
     const pos = { x: r.pos.x, y: r.pos.y };
 
     if (def.range === 'buff') {
-      r.buffs.berserk = BERSERK_DURATION;
+      if (key === 'rapidFire') r.buffs.rapidFire = BERSERK_DURATION;
+      else r.buffs.berserk = BERSERK_DURATION;
       events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, duration: BERSERK_DURATION });
 
     } else if (def.range === 'single') {
-      const t = pickMainTarget(r);
+      const t = pickMainTarget(r, attackRangeOf(state));
       if (!t) return null;
       const hit = rollDamage(atk * def.dmg, s.crit, s.critDmg);
       t.hp -= hit.dmg;
@@ -677,6 +705,70 @@
       if (n === 0) return null;
       events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, radius: def.radius, count: n });
 
+    } else if (def.range === 'cone') {
+      // 多重射击：最近的 N 个目标
+      const cand = [];
+      for (let i = 0; i < r.monsters.length; i++) {
+        const m = r.monsters[i];
+        if (!m.alive) continue;
+        const d = dist(m, pos);
+        if (d > def.radius) continue;
+        cand.push({ m: m, d: d });
+      }
+      if (!cand.length) return null;
+      cand.sort(function (a, b) { return a.d - b.d; });
+      const picks = cand.slice(0, def.maxTargets || 3);
+      for (let i = 0; i < picks.length; i++) {
+        const m = picks[i].m;
+        const hit = rollDamage(atk * def.dmg, s.crit, s.critDmg);
+        m.hp -= hit.dmg;
+        m.hurtT = 0.25;
+        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
+        if (m.hp <= 0) killMonster(state, m, events);
+      }
+      events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, radius: def.radius, count: picks.length });
+
+    } else if (def.range === 'escape') {
+      // 后跳：远离最近的敌人
+      const nearE = nearestMonster(r, 99);
+      let dx = 1, dy = 1;
+      if (nearE) { dx = pos.x - nearE.monster.x; dy = pos.y - nearE.monster.y; }
+      const dd = Math.sqrt(dx * dx + dy * dy) || 1;
+      const nx = pos.x + (dx / dd) * def.distance;
+      const ny = pos.y + (dy / dd) * def.distance;
+      if (MAP.isWalkable(r.map, Math.floor(nx), Math.floor(ny))) {
+        r.pos.x = nx;
+        r.pos.y = ny;
+        r.path = [];
+        MAP.reveal(r.map, nx, ny, 5);
+      }
+      if (nearE) {
+        const m = nearE.monster;
+        const hit = rollDamage(atk * def.dmg, s.crit, s.critDmg);
+        m.hp -= hit.dmg;
+        m.hurtT = 0.25;
+        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
+        if (m.hp <= 0) killMonster(state, m, events);
+      }
+      events.push({ type: 'skill', key: key, x: r.pos.x, y: r.pos.y });
+
+    } else if (def.range === 'trap') {
+      // 陷阱（简化：立刻在脚下引爆）
+      let n = 0;
+      for (let i = 0; i < r.monsters.length; i++) {
+        const m = r.monsters[i];
+        if (!m.alive) continue;
+        if (dist(m, pos) > def.radius) continue;
+        const hit = rollDamage(atk * def.dmg, s.crit, s.critDmg);
+        m.hp -= hit.dmg;
+        m.hurtT = 0.25;
+        n++;
+        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
+        if (m.hp <= 0) killMonster(state, m, events);
+      }
+      if (n === 0) return null;
+      events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, radius: def.radius, count: n });
+
     } else {
       return null;
     }
@@ -703,11 +795,15 @@
       if (def.range === 'buff') {
         if (!nearestMonster(r, 8)) continue;
       } else if (def.range === 'single') {
-        if (!nearestMonster(r, PLAYER_ATTACK_RANGE)) continue;
+        if (!nearestMonster(r, attackRangeOf(state))) continue;
       } else if (def.range === 'aoe') {
         if (!nearestMonster(r, def.radius)) continue;
       } else if (def.range === 'charge') {
         if (!nearestMonster(r, 10)) continue;
+      } else if (def.range === 'cone' || def.range === 'trap') {
+        if (!nearestMonster(r, def.radius)) continue;
+      } else if (def.range === 'escape') {
+        if (!nearestMonster(r, 3)) continue;
       }
       const evs = castSkillSlot(state, i);
       if (evs) return evs;
@@ -767,6 +863,12 @@
 
   function monsterAttack(state, m, events) {
     const s = state.stats;
+    // 闪避（游侠被动）
+    if (s.evade > 0 && rng() * 100 < s.evade) {
+      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 2);
+      events.push({ type: 'dodge', source: m });
+      return;
+    }
     const reduce = s.def / (s.def + 26 + state.player.floor * 5);
     let dmg = m.atk * (1 - reduce) * (1 + rnd(-0.1, 0.1));
     dmg = Math.max(1, Math.round(dmg));
@@ -818,6 +920,12 @@
     const r = state.run;
     const s = state.stats;
 
+    // 资源自然回复（游侠集中值）
+    const clsDef = DATA.CLASSES[state.player.cls];
+    if (clsDef && clsDef.resource === 'energy') {
+      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 8 * dt);
+    }
+
     // 玩家思考
     r.thinkCd -= dt;
     if (r.thinkCd <= 0) {
@@ -835,6 +943,7 @@
     if (r.gcd > 0) r.gcd = Math.max(0, r.gcd - dt);
     for (const k in r.skillCds) if (r.skillCds[k] > 0) r.skillCds[k] = Math.max(0, r.skillCds[k] - dt);
     if (r.buffs.berserk > 0) r.buffs.berserk = Math.max(0, r.buffs.berserk - dt);
+    if (r.buffs.rapidFire > 0) r.buffs.rapidFire = Math.max(0, r.buffs.rapidFire - dt);
 
     // 自动施法（优先于普通攻击）
     if (state.mode.autoCast) {
@@ -845,10 +954,12 @@
     // 玩家攻击
     r.attackCd -= dt;
     if (r.attackCd <= 0) {
-      const mainT = pickMainTarget(r);
+      const mainT = pickMainTarget(r, attackRangeOf(state));
       if (mainT && playerSwing(state, events, mainT)) {
-        const berserk = r.buffs.berserk > 0;
-        r.attackCd = s.attackInterval / (berserk ? BERSERK_SPEED_MUL : 1);
+        let speedMul = 1;
+        if (r.buffs.berserk > 0) speedMul *= BERSERK_SPEED_MUL;
+        if (r.buffs.rapidFire > 0) speedMul *= 2;
+        r.attackCd = s.attackInterval / speedMul;
       }
     }
 
