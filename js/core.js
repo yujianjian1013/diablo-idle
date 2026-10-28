@@ -46,6 +46,7 @@
   const BASE = { atk: 8, hp: 100, def: 0, crit: 5, critDmg: 150 };
   const PLAYER_ATK_INTERVAL = 0.9;
   const PLAYER_ATTACK_RANGE = 2.25;   // 玩家挥砍半径（格）
+  const SPLASH_BASE_RADIUS = 0.9;     // 有溅射时的基础波及半径（格）
   const MONSTER_ATTACK_RANGE = 1.25;  // 怪物近战半径
   const MONSTER_ATK_INTERVAL = 1.7;
   const MONSTER_AGGRO_RANGE = 9;      // 仇恨范围
@@ -59,7 +60,7 @@
   function expToNext(level) { return Math.floor(20 * Math.pow(1.30, level - 1)); }
   function playerBaseAtk(level) { return BASE.atk + (level - 1) * 2.6; }
   function playerBaseHp(level) { return BASE.hp + (level - 1) * 20; }
-  function monsterHp(floor) { return 30 * Math.pow(1.16, floor - 1); }
+  function monsterHp(floor) { return 27.5 * Math.pow(1.16, floor - 1); }
   function monsterAtk(floor) { return 1.4 * Math.pow(1.125, floor - 1); }
   function monsterExp(floor) { return 9 * Math.pow(1.15, floor - 1); }
   function monsterGold(floor) { return 2.2 * Math.pow(1.14, floor - 1); }
@@ -152,7 +153,7 @@
   function itemScore(item) {
     const W = {
       atk: 3.2, def: 2.0, hp: 0.42, crit: 7, critDmg: 2.6,
-      atkSpeed: 6.5, lifesteal: 13, goldFind: 0.8, magicFind: 1.6,
+      atkSpeed: 6.5, lifesteal: 13, goldFind: 0.8, magicFind: 1.6, splash: 3.2, splashRadius: 2.0,
     };
     let s = 0;
     for (let i = 0; i < item.affixes.length; i++) {
@@ -174,7 +175,7 @@
       atk: playerBaseAtk(p.level),
       hpMax: playerBaseHp(p.level),
       def: 0, crit: BASE.crit, critDmg: BASE.critDmg,
-      atkSpeedPct: 0, lifesteal: 0, goldFind: 0, magicFind: 0,
+      atkSpeedPct: 0, lifesteal: 0, goldFind: 0, magicFind: 0, splash: 0, splashRadiusPct: 0,
     };
     for (let i = 0; i < DATA.SLOT_KEYS.length; i++) {
       const it = state.equip[DATA.SLOT_KEYS[i]];
@@ -193,6 +194,8 @@
           case 'lifesteal': s.lifesteal += v; break;
           case 'goldFind': s.goldFind += v; break;
           case 'magicFind': s.magicFind += v; break;
+          case 'splash': s.splash += v; break;
+          case 'splashRadius': s.splashRadiusPct += v; break;
         }
       }
     }
@@ -202,6 +205,8 @@
     s.crit = Math.min(75, Math.round(s.crit * 10) / 10);
     s.critDmg = Math.round(s.critDmg);
     s.lifesteal = Math.min(30, Math.round(s.lifesteal * 10) / 10);
+    s.splash = Math.min(100, Math.round(s.splash * 10) / 10);
+    s.splashRadius = Math.round(SPLASH_BASE_RADIUS * (1 + s.splashRadiusPct / 100) * 100) / 100;
     s.attackInterval = PLAYER_ATK_INTERVAL / (1 + s.atkSpeedPct / 100);
     return s;
   }
@@ -446,34 +451,62 @@
     }
   }
 
-  /** 玩家挥砍：攻击半径内所有怪物 */
-  function playerSwing(state, events) {
+  /** 选主目标：优先当前锁定目标，其次最近的 */
+  function pickMainTarget(r) {
+    if (r.target && r.target.alive && dist(r.target, r.pos) <= PLAYER_ATTACK_RANGE) return r.target;
+    const near = nearestMonster(r, PLAYER_ATTACK_RANGE);
+    return near ? near.monster : null;
+  }
+
+  /**
+   * 玩家挥砍：主目标吃全额伤害，主目标周围溅射半径内的敌人吃溅射伤害。
+   * 溅射独立判定暴击，也参与吸血。
+   */
+  function playerSwing(state, events, mainTarget) {
     const r = state.run;
     const s = state.stats;
-    const targets = [];
-    for (let i = 0; i < r.monsters.length; i++) {
-      const m = r.monsters[i];
-      if (!m.alive) continue;
-      if (dist(m, r.pos) <= PLAYER_ATTACK_RANGE) targets.push(m);
-    }
-    if (!targets.length) return false;
+    const m = mainTarget;
+    if (!m || !m.alive) return false;
+    if (dist(m, r.pos) > PLAYER_ATTACK_RANGE) return false;
 
     r.swingT = 0.32;
     r.swingX = r.pos.x;
     r.swingY = r.pos.y;
-    events.push({ type: 'swing', x: r.pos.x, y: r.pos.y, count: targets.length });
 
     const atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
-    let totalLeech = 0;
-    for (let i = 0; i < targets.length; i++) {
-      const m = targets[i];
-      const hit = rollDamage(s.atk * atkMul, s.crit, s.critDmg);
-      m.hp -= hit.dmg;
-      m.hurtT = 0.25;
-      totalLeech += hit.dmg;
-      events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit });
-      if (m.hp <= 0) killMonster(state, m, events);
+    const atk = s.atk * atkMul;
+
+    // 主目标
+    const hit = rollDamage(atk, s.crit, s.critDmg);
+    m.hp -= hit.dmg;
+    m.hurtT = 0.25;
+    let totalLeech = hit.dmg;
+    events.push({ type: 'swing', x: r.pos.x, y: r.pos.y, count: 1 + (s.splash > 0 ? 1 : 0) });
+    events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, main: true });
+    if (m.hp <= 0) killMonster(state, m, events);
+
+    // 溅射：以主目标为圆心
+    let splashCount = 0;
+    if (s.splash > 0) {
+      const radius = s.splashRadius;
+      const base = hit.dmg * (s.splash / 100);
+      for (let i = 0; i < r.monsters.length; i++) {
+        const o = r.monsters[i];
+        if (o === m || !o.alive) continue;
+        if (dist(o, m) > radius) continue;
+        const sh = rollDamage(base, s.crit, s.critDmg);
+        o.hp -= sh.dmg;
+        o.hurtT = 0.2;
+        totalLeech += sh.dmg;
+        splashCount++;
+        events.push({ type: 'hit', monster: o, dmg: sh.dmg, crit: sh.crit, splash: true });
+        if (o.hp <= 0) killMonster(state, o, events);
+      }
+      if (splashCount > 0) {
+        events.push({ type: 'splash', x: m.x, y: m.y, radius: radius, count: splashCount });
+      }
     }
+
     if (s.lifesteal > 0 && totalLeech > 0) {
       state.player.hp = Math.min(s.hpMax, state.player.hp + totalLeech * s.lifesteal / 100);
     }
@@ -674,8 +707,9 @@
 
     // 玩家攻击
     r.attackCd -= dt;
-    if (r.attackCd <= 0 && nearestMonster(r, PLAYER_ATTACK_RANGE)) {
-      if (playerSwing(state, events)) {
+    if (r.attackCd <= 0) {
+      const mainT = pickMainTarget(r);
+      if (mainT && playerSwing(state, events, mainT)) {
         const berserk = r.buffs.berserk > 0;
         r.attackCd = s.attackInterval / (berserk ? BERSERK_SPEED_MUL : 1);
       }

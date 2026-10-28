@@ -43,6 +43,8 @@
     lifesteal: { key: 'lifesteal', name: '生命偷取', weight: 7,  base: [1, 2],    scale: 0.30, pct: true,  prefix: ['嗜血的', '饮魂的'], suffix: ['之血'] },
     goldFind:  { key: 'goldFind',  name: '金币获取', weight: 9,  base: [3, 8],    scale: 0.50, pct: true,  prefix: ['贪财的', '富饶的'], suffix: ['之财'] },
     magicFind: { key: 'magicFind', name: '寻宝几率', weight: 7,  base: [2, 6],    scale: 0.50, pct: true,  prefix: ['幸运的', '探宝者的'], suffix: ['之幸'] },
+    splash:       { key: 'splash',       name: '溅射伤害', weight: 15, base: [3, 6],   scale: 0.50, pct: true, prefix: ['裂开的', '震荡的', '回响的'], suffix: ['之裂'] },
+    splashRadius: { key: 'splashRadius', name: '溅射范围', weight: 10, base: [8, 14],   scale: 0.35, pct: true, prefix: ['扩散的', '波及的', '环流的'], suffix: ['之散'] },
   };
   const AFFIX_KEYS = Object.keys(AFFIXES);
 

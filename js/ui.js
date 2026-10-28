@@ -146,9 +146,17 @@
           this.ripples.push({ x: ev.x, y: ev.y, t: 0 });
           break;
         case 'hit':
-          this.addFloat(ev.monster.x, ev.monster.y, '-' + fmt(ev.dmg), ev.crit ? '#ffcf4a' : '#f2e8d6', ev.crit ? 21 : 15, 42);
-          this.addParts(ev.monster.x, ev.monster.y, ev.crit ? '#ffb347' : '#c8b89a', ev.crit ? 8 : 4, 110);
-          if (ev.crit) this.shake = Math.max(this.shake, 3);
+          if (ev.splash) {
+            // 溅射：小一号的橙色数字，避免和主伤害混淆
+            this.addFloat(ev.monster.x, ev.monster.y, '-' + fmt(ev.dmg), ev.crit ? '#ffb030' : '#e08a50', ev.crit ? 14 : 11, 34);
+          } else {
+            this.addFloat(ev.monster.x, ev.monster.y, '-' + fmt(ev.dmg), ev.crit ? '#ffcf4a' : '#f2e8d6', ev.crit ? 21 : 15, 42);
+            this.addParts(ev.monster.x, ev.monster.y, ev.crit ? '#ffb347' : '#c8b89a', ev.crit ? 8 : 4, 110);
+            if (ev.crit) this.shake = Math.max(this.shake, 3);
+          }
+          break;
+        case 'splash':
+          this.ripples.push({ x: ev.x, y: ev.y, t: 0, splash: true });
           break;
         case 'monsterDied':
           this.dying.push({ m: ev.monster, t: 1 });
@@ -269,8 +277,10 @@
         const r = this.ripples[i];
         const p = this.worldToScreen(r.x, r.y);
         const k = r.t / 0.4;
-        const radius = r.big ? (30 + k * 130) : (20 + k * 60);
-        ctx.strokeStyle = 'rgba(255, 220, 150, ' + (1 - k) * 0.55 + ')';
+        const radius = r.big ? (30 + k * 130) : (r.splash ? (10 + k * 34) : (20 + k * 60));
+        ctx.strokeStyle = r.splash
+          ? 'rgba(255, 150, 70, ' + (1 - k) * 0.5 + ')'
+          : 'rgba(255, 220, 150, ' + (1 - k) * 0.55 + ')';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.ellipse(p.x, p.y - 6, radius, radius * 0.5, 0, 0, Math.PI * 2);
@@ -1101,6 +1111,8 @@
       ['生命偷取', pct(s.lifesteal), ''],
       ['金币加成', '+' + pct(s.goldFind), ''],
       ['寻宝几率', '+' + pct(s.magicFind), ''],
+      ['溅射伤害', s.splash > 0 ? pct(s.splash) : '—', s.splash > 0 ? 'up' : ''],
+      ['溅射范围', s.splash > 0 ? s.splashRadius.toFixed(2) + ' 格' : '—', ''],
     ];
     let html = '';
     for (const r of rows) {
