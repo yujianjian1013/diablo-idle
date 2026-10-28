@@ -600,7 +600,7 @@
       return;
     }
     state.bag.push(item);
-    if (state.bag.length > 40) sellItem(state, state.bag.shift(), events, true);
+    while (state.bag.length > 40) sellItem(state, state.bag.shift(), events, true);
     pushLog(state, '拾取 ' + item.name, 'log-' + item.quality);
     events.push({ type: 'drop', item: item });
   }
