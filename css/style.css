@@ -505,3 +505,82 @@ button.skill-btn.passive {
   border-color: #2a3a2a;
   cursor: default;
 }
+/* ---------------- 首页 / 职业选择 ---------------- */
+.home-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: none;
+  place-items: center;
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(70, 40, 10, 0.35), transparent 60%),
+    radial-gradient(ellipse at 50% 110%, rgba(90, 10, 10, 0.28), transparent 60%),
+    #050403;
+}
+.home-screen.show { display: grid; }
+.home-inner { text-align: center; padding: 20px; }
+
+.game-title {
+  font-size: 46px;
+  font-weight: normal;
+  letter-spacing: 16px;
+  color: #d8b45a;
+  text-shadow: 0 0 30px rgba(200, 140, 30, 0.45), 0 4px 14px #000;
+  margin-bottom: 8px;
+  padding-left: 16px;
+}
+.game-sub {
+  color: #7a6a54;
+  font-size: 13px;
+  letter-spacing: 5px;
+  margin-bottom: 42px;
+  padding-left: 5px;
+}
+
+.home-actions { display: flex; flex-direction: column; gap: 12px; width: 240px; margin: 0 auto; }
+.home-btn {
+  padding: 12px 0;
+  font-size: 15px;
+  letter-spacing: 6px;
+  color: #b8a888;
+  background: linear-gradient(180deg, #1e1710, #100c08);
+  border: 1px solid #3a2c1d;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: inherit;
+  padding-left: 6px;
+}
+.home-btn:hover {
+  color: #f0dca8;
+  border-color: #6b4f2a;
+  box-shadow: 0 0 18px -4px rgba(200, 160, 60, 0.55);
+}
+.home-btn.primary { color: var(--gold); border-color: #5a4426; }
+.home-btn.small { width: 120px; margin: 18px auto 0; padding: 8px 0; font-size: 12px; letter-spacing: 3px; }
+
+.class-select { display: none; }
+.class-select.show { display: block; }
+.class-title { color: #9a8868; letter-spacing: 6px; font-size: 13px; margin-bottom: 20px; }
+.class-list { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+.class-card {
+  width: 118px;
+  padding: 14px 8px;
+  border: 1px solid #2e2418;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #17120c, #0b0806);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.class-card:hover { border-color: #6b4f2a; box-shadow: 0 0 16px -5px rgba(200, 160, 60, 0.6); }
+.class-card.disabled { opacity: 0.32; cursor: not-allowed; }
+.class-card.disabled:hover { border-color: #2e2418; box-shadow: none; }
+.class-card .cc-name { color: #e0d2b8; font-size: 15px; letter-spacing: 2px; margin-bottom: 6px; }
+.class-card .cc-main { color: #c9a227; font-size: 11px; margin-bottom: 4px; }
+.class-card .cc-res { color: #8a7a62; font-size: 11px; margin-bottom: 8px; }
+.class-card .cc-desc { color: #6f6048; font-size: 10px; line-height: 1.5; min-height: 28px; }
+.class-card .cc-tag { margin-top: 8px; font-size: 10px; color: #6a5a44; }
+.class-card.available .cc-tag { color: #6bd47a; }
+
+.home-version { margin-top: 40px; color: #3a3026; font-size: 11px; letter-spacing: 2px; }

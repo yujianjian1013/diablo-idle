@@ -12,7 +12,7 @@ const ROOT = path.join(__dirname, '..');
   const errors = [];
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
 
-  await page.goto('file:///' + ROOT.replace(/\\/g, '/') + '/index.html');
+  await page.goto('file:///' + ROOT.replace(/\\/g, '/') + '/index.html?auto=1');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForTimeout(800);

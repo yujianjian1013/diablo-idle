@@ -14,7 +14,7 @@ const ROOT = path.join(__dirname, '..');
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
-  const url = 'file:///' + ROOT.replace(/\\/g, '/') + '/index.html';
+  const url = 'file:///' + ROOT.replace(/\\/g, '/') + '/index.html?auto=1';
 
   // 清空旧存档
   await page.goto(url);

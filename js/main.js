@@ -172,13 +172,14 @@
       UI.update(state, true);
     };
 
-    // 重置
-    els.btnReset.onclick = function () {
-      if (confirm('确定要清空存档，从头开始吗？')) {
-        C.resetSave();
-        location.reload();
-      }
-    };
+    // 返回首页（自动保存）
+    const btnHome = document.getElementById('btnHome');
+    if (btnHome) {
+      btnHome.onclick = function () {
+        C.save(state);
+        showHome();
+      };
+    }
 
     // 装备 / 背包 tooltip
     const grid = els.equipGrid;
@@ -270,36 +271,105 @@
   /* ============================================================
      启动
      ============================================================ */
-  function boot() {
-    UI.init();
-    const els = UI.els;
+  /* ---------------- 首页 ---------------- */
+  function showHome() {
+    running = false;
+    const home = document.getElementById('homeScreen');
+    const hasSave = !!localStorage.getItem(C.SAVE_KEY);
+    document.getElementById('btnContinue').style.display = hasSave ? '' : 'none';
+    document.getElementById('homeActions').style.display = '';
+    document.getElementById('classSelect').classList.remove('show');
+    document.getElementById('homeVersion').textContent = '存档版本 v' + C.VERSION;
+    home.classList.add('show');
+  }
 
-    state = C.load();
-    if (state) {
+  function renderClassCards() {
+    const list = document.getElementById('classList');
+    const order = ['warrior', 'ranger', 'paladin', 'mage', 'priest'];
+    let html = '';
+    for (let i = 0; i < order.length; i++) {
+      const key = order[i];
+      const c = C.CLASSES[key];
+      if (!c) {
+        // 未实现的职业：占位
+        html += '<div class="class-card disabled">' +
+          '<div class="cc-name">？？？</div>' +
+          '<div class="cc-main">—</div>' +
+          '<div class="cc-res">—</div>' +
+          '<div class="cc-desc">敬请期待</div>' +
+          '<div class="cc-tag">未开放</div></div>';
+        continue;
+      }
+      const mainName = { str: '力量', agi: '敏捷', vit: '体力', int: '智力' }[c.mainStat] || '';
+      const resName = { rage: '怒气', energy: '集中值', holy: '圣能', mana: '魔法' }[c.resource] || '';
+      html += '<div class="class-card available" data-cls="' + key + '">' +
+        '<div class="cc-name">' + c.name + '</div>' +
+        '<div class="cc-main">主属性：' + mainName + '</div>' +
+        '<div class="cc-res">资源：' + resName + '</div>' +
+        '<div class="cc-desc">' + c.desc + '</div>' +
+        '<div class="cc-tag">可游玩</div></div>';
+    }
+    list.innerHTML = html;
+    list.querySelectorAll('.class-card.available').forEach(function (card) {
+      card.onclick = function () { startGame(card.dataset.cls); };
+    });
+  }
+
+  function startGame(clsKey) {
+    running = false;
+    document.getElementById('homeScreen').classList.remove('show');
+    if (clsKey) {
+      C.resetSave();
+      state = C.createState(clsKey);
+    } else {
+      state = C.load() || C.createState(C.CLASS_DEFAULT);
       const off = C.settleOffline(state);
       if (off) showOffline(off);
-      C.pushLog(state, '欢迎回来，继续你的深渊之旅。', '');
-    } else {
-      state = C.createState();
-      C.pushLog(state, '你在「荒废庭院」的入口醒来，手中只有一把生锈的长剑。', '');
-      C.pushLog(state, '自动战斗已经开启 —— 杀怪、爆装备、变强。', 'log-gold');
+      else C.pushLog(state, '欢迎回来，继续你的深渊之旅。', '');
     }
-
-    bind();
     // 同步开关状态
+    const els = UI.els;
     els.btnAutoEquip.className = 'toggle ' + (state.mode.autoEquip ? 'on' : 'off');
     els.btnAutoSell.className = 'toggle ' + (state.mode.autoSell ? 'on' : 'off');
     els.btnAutoEquip.textContent = state.mode.autoEquip ? '自动装备：开' : '自动装备：关';
     els.btnAutoSell.textContent = state.mode.autoSell ? '自动分解：开' : '自动分解：关';
-
     UI.update(state, true);
     lastTs = 0;
-    // 调试/自动化测试入口
+    running = true;
+    requestAnimationFrame(loop);
+  }
+
+  function boot() {
+    UI.init();
+    bind();
+
+    // 调试/自动化入口（任何模式都可用）
     window.__game = {
       get state() { return state; },
       save: function () { return C.save(state); },
+      startGame: startGame,
+      showHome: showHome,
     };
-    requestAnimationFrame(loop);
+
+    // 首页按钮
+    document.getElementById('btnNewGame').onclick = function () {
+      document.getElementById('homeActions').style.display = 'none';
+      renderClassCards();
+      document.getElementById('classSelect').classList.add('show');
+    };
+    document.getElementById('btnContinue').onclick = function () { startGame(null); };
+    document.getElementById('btnBackHome').onclick = function () {
+      document.getElementById('classSelect').classList.remove('show');
+      document.getElementById('homeActions').style.display = '';
+    };
+
+    // 自动化测试入口：?auto=1 直接开始
+    if (/[?&]auto=1/.test(location.search)) {
+      startGame(null);
+      return;
+    }
+
+    showHome();
   }
 
   if (document.readyState === 'loading') {

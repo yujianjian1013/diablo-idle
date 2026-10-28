@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..');
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
 
-  await page.goto('file:///' + ROOT.replace(/\\/g, '/') + '/index.html');
+  await page.goto('file:///' + ROOT.replace(/\\/g, '/') + '/index.html?auto=1');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForTimeout(1200);

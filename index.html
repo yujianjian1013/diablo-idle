@@ -8,6 +8,27 @@
 </head>
 <body>
 
+<!-- 首页 / 职业选择 -->
+<div id="homeScreen" class="home-screen">
+  <div class="home-inner">
+    <h1 class="game-title">暗 黑 挂 机</h1>
+    <div class="game-sub">地牢探索 · 随机装备 · 五职业</div>
+
+    <div class="home-actions" id="homeActions">
+      <button id="btnContinue" class="home-btn primary">继 续 游 戏</button>
+      <button id="btnNewGame" class="home-btn">新 游 戏</button>
+    </div>
+
+    <div class="class-select" id="classSelect">
+      <div class="class-title">选择职业</div>
+      <div class="class-list" id="classList"></div>
+      <button id="btnBackHome" class="home-btn small">返 回</button>
+    </div>
+
+    <div class="home-version" id="homeVersion"></div>
+  </div>
+</div>
+
 <div id="app">
 
   <!-- 顶栏 -->
@@ -58,7 +79,7 @@
         </div>
         <div class="btn-row skill-row" id="skillBar"></div>
         <div class="btn-row">
-          <button id="btnReset" class="danger">重置存档</button>
+          <button id="btnHome" class="danger">返回首页</button>
         </div>
       </div>
 

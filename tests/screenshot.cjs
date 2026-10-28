@@ -9,7 +9,7 @@ const ROOT = path.join(__dirname, '..');
 (async () => {
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await page.goto('file:///' + ROOT.replace(/\\/g, '/') + '/index.html');
+  await page.goto('file:///' + ROOT.replace(/\\/g, '/') + '/index.html?auto=1');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForTimeout(1000);
