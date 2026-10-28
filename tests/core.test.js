@@ -124,6 +124,12 @@ ok(c50.atk > st1.atk * 5, '50 级攻击应远高于 1 级');
 
 section('技能释放');
 for (let i = 0; i < 80; i++) CORE.tick(sk, 0.1);   // 先打一会儿攒怒气、靠近怪
+// 把最近的怪拉到身边，确保 AOE 技能能命中
+const aliveNear = sk.run.monsters.filter(function (m) { return m.alive; });
+if (aliveNear.length) {
+  aliveNear[0].x = sk.run.pos.x + 1;
+  aliveNear[0].y = sk.run.pos.y + 1;
+}
 sk.player.rage = 100;
 sk.run.gcd = 0;
 const skEvs = CORE.castSkillSlot(sk, 0);
