@@ -9,3 +9,5 @@ node_modules/
 .vscode/
 .idea/
 *.swp
+# 临时截图
+shot*.png
