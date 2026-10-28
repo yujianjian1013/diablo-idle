@@ -88,7 +88,7 @@
     addFloat(gx, gy, text, color, size, dy) {
       const p = this.worldToScreen(gx, gy);
       this.floats.push({
-        x: p.x + (Math.random() * 20 - 10),
+        x: p.x + (Math.random() * 36 - 18),
         y: p.y - (dy || 30) + (Math.random() * 8 - 4),
         text, color, size: size || 15, vy: -52, life: 1,
       });
@@ -265,7 +265,7 @@
 
       const g = ctx.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.8);
       g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, 'rgba(0,0,0,0.5)');
+      g.addColorStop(1, 'rgba(0,0,0,0.42)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
     },
@@ -309,7 +309,7 @@
             grad.addColorStop(1, '#3a2f18');
             ctx.fillStyle = grad;
           } else {
-            const v = 34 + h * 16;
+            const v = 38 + h * 17;
             ctx.fillStyle = 'rgb(' + Math.round(v + 10) + ',' + Math.round(v + 4) + ',' + Math.round(v - 4) + ')';
           }
           ctx.fill();
@@ -350,6 +350,8 @@
 
     drawWallsAndUnits(ctx, map, run) {
       const W = this.W, H = this.H;
+      const ppx = this.worldToScreen(run.pos.x, run.pos.y);
+      const pdepth = Math.floor(run.pos.x + run.pos.y);
       const maxD = map.w + map.h;
       const buckets = new Array(maxD + 2);
       const push = function (d, item) {
@@ -365,7 +367,15 @@
           const east = (x + 1 < map.w) ? map.tiles[y * map.w + (x + 1)] : 0;
           const p = this.worldToScreen(x, y);
           if (p.x < -TW * 2 || p.x > W + TW * 2 || p.y < -WALL_H - TH * 2 || p.y > H + TW) continue;
-          push(x + y, { kind: 'wall', px: p.x, py: p.y, south, east, h: hash2(x, y) });
+          // 只有"挡在角色前方"的墙才虚化：既保证能看见角色/怪物，又保留墙的体积感
+          const sdx = p.x - ppx.x;
+          const sdy = p.y - ppx.y;
+          const sdist = Math.sqrt(sdx * sdx + sdy * sdy);
+          const inFront = (x + y) > pdepth;
+          let alpha = 1;
+          if (inFront && sdist < TW * 1.35) alpha = 0.34;
+          else if (inFront && sdist < TW * 1.95) alpha = 0.66;
+          push(x + y, { kind: 'wall', px: p.x, py: p.y, south, east, h: hash2(x, y), alpha });
         }
       }
 
@@ -384,8 +394,7 @@
         push(Math.floor(m.x + m.y), { kind: 'monster', m, px: p.x, py: p.y });
       }
 
-      const pp = this.worldToScreen(run.pos.x, run.pos.y);
-      this._playerScreen = pp;
+      push(pdepth, { kind: 'player', px: ppx.x, py: ppx.y });
 
       for (let d = 0; d < buckets.length; d++) {
         const b = buckets[d];
@@ -394,11 +403,9 @@
           const it = b[i];
           if (it.kind === 'wall') this.drawWall(ctx, it);
           else if (it.kind === 'monster') this.drawMonsterAt(ctx, it.m, it.px, it.py);
+          else this.drawPlayerAt(ctx, it.px, it.py);
         }
       }
-
-      // 玩家永远最后画，保证在任何情况下都可见
-      if (this._playerScreen) this.drawPlayerAt(ctx, this._playerScreen.x, this._playerScreen.y);
 
       for (let i = 0; i < this.dying.length; i++) {
         const d = this.dying[i];
@@ -413,7 +420,9 @@
     drawWall(ctx, it) {
       const px = it.px, py = it.py, h = it.h;
       const topY = py - WALL_H;
-      const g = 58 + h * 22;
+      const g = 46 + h * 16;
+      ctx.save();
+      ctx.globalAlpha = it.alpha === undefined ? 1 : it.alpha;
 
       ctx.beginPath();
       ctx.moveTo(px, topY - TH / 2);
@@ -421,7 +430,7 @@
       ctx.lineTo(px, topY + TH / 2);
       ctx.lineTo(px - TW / 2, topY);
       ctx.closePath();
-      ctx.fillStyle = 'rgb(' + Math.round(g) + ',' + Math.round(g * 0.86) + ',' + Math.round(g * 0.68) + ')';
+      ctx.fillStyle = 'rgb(' + Math.round(g) + ',' + Math.round(g * 0.94) + ',' + Math.round(g * 0.86) + ')';
       ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.25)';
       ctx.lineWidth = 1;
@@ -435,7 +444,7 @@
         ctx.lineTo(px, py + TH / 2);
         ctx.lineTo(px - TW / 2, py);
         ctx.closePath();
-        ctx.fillStyle = 'rgb(' + Math.round(g * 0.58) + ',' + Math.round(g * 0.47) + ',' + Math.round(g * 0.35) + ')';
+        ctx.fillStyle = 'rgb(' + Math.round(g * 0.56) + ',' + Math.round(g * 0.5) + ',' + Math.round(g * 0.45) + ')';
         ctx.fill();
         ctx.strokeStyle = 'rgba(0,0,0,0.22)';
         ctx.lineWidth = 1;
@@ -453,7 +462,7 @@
         ctx.lineTo(px + TW / 2, py);
         ctx.lineTo(px, py + TH / 2);
         ctx.closePath();
-        ctx.fillStyle = 'rgb(' + Math.round(g * 0.44) + ',' + Math.round(g * 0.36) + ',' + Math.round(g * 0.27) + ')';
+        ctx.fillStyle = 'rgb(' + Math.round(g * 0.4) + ',' + Math.round(g * 0.36) + ',' + Math.round(g * 0.33) + ')';
         ctx.fill();
         ctx.strokeStyle = 'rgba(0,0,0,0.22)';
         ctx.lineWidth = 1;
@@ -463,7 +472,24 @@
         ctx.stroke();
       }
 
-      if (h > 0.965) this.drawTorch(ctx, px, topY - 4, h);
+      if (h > 0.965 && it.alpha > 0.6) this.drawTorch(ctx, px, topY - 4, h);
+      ctx.restore();
+
+      // 虚化墙保留一圈轮廓，避免"墙消失"的错觉
+      if (it.alpha < 0.99) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = 'rgba(120, 104, 84, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px, topY - TH / 2);
+        ctx.lineTo(px + TW / 2, topY);
+        ctx.lineTo(px, topY + TH / 2);
+        ctx.lineTo(px - TW / 2, topY);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+      }
     },
 
     drawTorch(ctx, x, y, seed) {
