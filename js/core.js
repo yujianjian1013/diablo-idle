@@ -203,7 +203,7 @@
     const p = state.player;
     const lv = Math.max(1, Math.min(p.level, DATA.PASSIVE_MAX_LEVEL));
     const t = (lv - 1) / Math.max(1, DATA.PASSIVE_MAX_LEVEL - 1);
-    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0, evade: 0, markDmg: 0, comboPerHit: 0 };
+    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0, evade: 0, markDmg: 0, comboPerHit: 0, mpPct: 0, elemDmg: 0, dmgReduce: 0 };
     const pool = p.skills || [];
     const lerp = function (a) { return a[0] + (a[1] - a[0]) * t; };
     for (let i = 0; i < pool.length; i++) {
@@ -218,6 +218,9 @@
       if (g.evade) out.evade += lerp(g.evade);
       if (g.markDmg) out.markDmg += lerp(g.markDmg);
       if (g.comboPerHit) out.comboPerHit += lerp(g.comboPerHit);
+      if (g.mpPct) out.mpPct += lerp(g.mpPct);
+      if (g.elemDmg) out.elemDmg += lerp(g.elemDmg);
+      if (g.dmgReduce) out.dmgReduce += lerp(g.dmgReduce);
     }
     return out;
   }
@@ -244,13 +247,15 @@
       goldFind: 0, magicFind: 0,
       splash: pas.splash, splashRadiusPct: 0,
       mpMax: Math.round(st.int * S.int.mpPerPoint),
-      mpRegen: st.int * S.int.mpRegenPerPoint,
+      mpRegen: (S.int.mpRegenBase || 0) + st.int * S.int.mpRegenPerPoint,
       skillEffect: Math.round(st.int * S.int.skillEffectPerPoint * 10) / 10,
       secondChance: pas.secondChance,
       secondDmg: pas.secondDmg,
       evade: Math.min(40, pas.evade),
       markDmg: pas.markDmg,
       comboPerHit: pas.comboPerHit,
+      elemDmg: pas.elemDmg,
+      dmgReduce: Math.min(50, pas.dmgReduce),
     };
 
     // 2. 装备词条叠加
@@ -294,6 +299,15 @@
     s.splashRadius = Math.round(SPLASH_BASE_RADIUS * (1 + s.splashRadiusPct / 100) * 100) / 100;
     s.attackInterval = PLAYER_ATK_INTERVAL / (1 + s.atkSpeedPct / 100);
     s.secondChance = Math.round(s.secondChance * 10) / 10;
+    // 法师：魔法上限吃智力与「法力涌动」被动
+    s.mpMax = Math.round(s.mpMax * (1 + (pas.mpPct || 0) / 100));
+    // 资源上限同步到 player（法师用魔法，其他职业 100）
+    const clsd = DATA.CLASSES[p.cls || CLASS_DEFAULT];
+    if (clsd && clsd.resource === 'mana') {
+      p.rageMax = Math.max(20, s.mpMax);
+    } else {
+      p.rageMax = RAGE_MAX;
+    }
     return s;
   }
 
@@ -439,6 +453,7 @@
     state.player.floor = floor;
     state.player.bestFloor = Math.max(state.player.bestFloor, floor);
     state.player.hp = state.stats.hpMax;
+    state.player.rage = state.player.rageMax;
     MAP.reveal(map, run.pos.x, run.pos.y, sightOf(state));
     return run;
   }
@@ -614,7 +629,7 @@
     state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + RAGE_ON_HIT);
 
     const atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
-    let atk = s.atk * atkMul;
+    let atk = s.atk * atkMul * (1 + (s.elemDmg || 0) / 100);
 
     // 猎手印记：对高生命目标增伤
     if (s.markDmg > 0 && m.hpMax > 0 && m.hp / m.hpMax > 0.7) {
@@ -694,7 +709,7 @@
     const s = state.stats;
     const events = [];
     const atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
-    const atk = s.atk * atkMul * (1 + (s.skillEffect || 0) / 100);
+    const atk = s.atk * atkMul * (1 + (s.skillEffect || 0) / 100) * (1 + (s.elemDmg || 0) / 100);
     const pos = { x: r.pos.x, y: r.pos.y };
 
     if (def.range === 'buff') {
@@ -945,7 +960,8 @@
       return;
     }
     const reduce = s.def / (s.def + 26 + state.player.floor * 5);
-    let dmg = m.atk * (1 - reduce) * (1 + rnd(-0.1, 0.1));
+    const shieldMul = 1 - Math.min(50, s.dmgReduce || 0) / 100;
+    let dmg = m.atk * (1 - reduce) * shieldMul * (1 + rnd(-0.1, 0.1));
     dmg = Math.max(1, Math.round(dmg));
     state.player.hp -= dmg;
     state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + RAGE_ON_HURT);
@@ -1010,6 +1026,8 @@
     const clsDef = DATA.CLASSES[state.player.cls];
     if (clsDef && clsDef.resource === 'energy') {
       state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 8 * dt);
+    } else if (clsDef && clsDef.resource === 'mana') {
+      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + (s.mpRegen || 1) * dt);
     }
 
     // 玩家思考

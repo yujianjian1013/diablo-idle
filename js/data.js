@@ -131,7 +131,7 @@
       resource: 'energy',
       base: { str: 12, agi: 18, vit: 12, int: 10 },
       growth: { str: 1.2, agi: 2.4, vit: 1.2, int: 1.0 },
-      atkCoef: 1.45,
+      atkCoef: 1.55,
       attackRange: 4.2,
       sight: 10,
       skillPool: [
@@ -139,6 +139,23 @@
         'precision', 'combo', 'evasion', 'huntersMark',
       ],
       defaultSkills: ['steadyShot', 'multiShot', 'serpentSting', 'rapidFire', 'precision'],
+    },
+    mage: {
+      key: 'mage',
+      name: '法师',
+      desc: '以魔法为资源，远程爆发与大范围法术，血薄但输出最高。',
+      mainStat: 'int',
+      resource: 'mana',
+      base: { str: 6, agi: 10, vit: 10, int: 20 },
+      growth: { str: 0.8, agi: 1.0, vit: 0.6, int: 3.0 },
+      atkCoef: 1.78,
+      attackRange: 5.0,
+      sight: 10,
+      skillPool: [
+        'fireball', 'arcaneMissile', 'frostCone', 'blizzard', 'blink', 'arcanePower',
+        'manaSurge', 'elementalMastery', 'arcaneShield', 'frostBlood',
+      ],
+      defaultSkills: ['fireball', 'frostCone', 'blizzard', 'arcanePower', 'elementalMastery'],
     },
   };
 
@@ -246,6 +263,56 @@
       key: 'huntersMark', name: '猎手印记', type: 'passive',
       desc: '对高生命值目标造成额外伤害',
     },
+
+    /* ---- 法师 ---- */
+    arcaneMissile: {
+      key: 'arcaneMissile', name: '奥术飞弹', type: 'active',
+      cost: 15, cd: 0, range: 'single', dmg: 1.2,
+      desc: '对主目标造成 120% 奥术伤害，消耗低',
+    },
+    fireball: {
+      key: 'fireball', name: '火球术', type: 'active',
+      cost: 25, cd: 0, range: 'single', dmg: 2.2,
+      desc: '对主目标造成 220% 火焰伤害',
+    },
+    frostCone: {
+      key: 'frostCone', name: '冰锥术', type: 'active',
+      cost: 30, cd: 0, range: 'cone', radius: 4.5, dmg: 1.6, maxTargets: 3,
+      desc: '对前方最多 3 个敌人造成 160% 冰霜伤害',
+    },
+    blizzard: {
+      key: 'blizzard', name: '暴风雪', type: 'active',
+      cost: 45, cd: 12, range: 'aoe', radius: 3.6, dmg: 1.5,
+      desc: '对周围 3.6 格内所有敌人造成 150% 伤害',
+    },
+    blink: {
+      key: 'blink', name: '闪现', type: 'active',
+      cost: 15, cd: 10, range: 'escape', distance: 4, dmg: 0,
+      desc: '瞬间拉开 4 格距离',
+    },
+    arcanePower: {
+      key: 'arcanePower', name: '奥术强化', type: 'active',
+      cost: 40, cd: 26, range: 'buff',
+      desc: '8 秒内攻击速度 +50%、攻击力 +40%',
+    },
+
+    /* ---- 法师被动 ---- */
+    manaSurge: {
+      key: 'manaSurge', name: '法力涌动', type: 'passive',
+      desc: '提升魔法值上限',
+    },
+    elementalMastery: {
+      key: 'elementalMastery', name: '元素精通', type: 'passive',
+      desc: '所有伤害提升',
+    },
+    arcaneShield: {
+      key: 'arcaneShield', name: '奥术护盾', type: 'passive',
+      desc: '受到的伤害降低',
+    },
+    frostBlood: {
+      key: 'frostBlood', name: '冰冷血脉', type: 'passive',
+      desc: '提升暴击伤害',
+    },
   };
 
   // 被动按 1 级 → 50 级线性插值
@@ -258,6 +325,10 @@
     combo: { comboPerHit: [2, 2] },
     evasion: { evade: [8, 18] },
     huntersMark: { markDmg: [10, 30] },
+    manaSurge: { mpPct: [10, 30] },
+    elementalMastery: { elemDmg: [3, 10] },
+    arcaneShield: { dmgReduce: [3, 12] },
+    frostBlood: { critDmg: [10, 30] },
   };
   const PASSIVE_MAX_LEVEL = 50;
 
@@ -266,7 +337,7 @@
     str: { atkPerPoint: 1.5 },
     agi: { armorPerPoint: 0.2, atkSpeedPerPoint: 0.1 },
     vit: { hpPerPoint: 8 },
-    int: { mpPerPoint: 4, mpRegenPerPoint: 0.05, skillEffectPerPoint: 0.2 },
+    int: { mpPerPoint: 4, mpRegenPerPoint: 0.12, skillEffectPerPoint: 0.2, mpRegenBase: 3 },
   };
 
   const CLASS_KEYS = Object.keys(CLASSES);
