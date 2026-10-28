@@ -66,7 +66,7 @@
   const MONSTER_ATTACK_RANGE = 1.25;  // 怪物近战半径
   const MONSTER_ATK_INTERVAL = 1.7;
   const MONSTER_AGGRO_RANGE = 9;      // 仇恨范围
-  const PLAYER_SPEED = 3.4;           // 格 / 秒
+  const PLAYER_SPEED = 6.8;           // 格 / 秒（测试期翻倍，原 3.4）
   const MONSTER_SPEED = 1.7;
   const ATTACK_VARIANCE = 0.12;
   const REGEN_PER_SEC = 0.004;
