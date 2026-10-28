@@ -195,6 +195,12 @@
           this.healFlash = 1;
           this.addFloat(this._px, this._py, '+' + fmt(ev.amount), '#5ad47a', 14, 40);
           break;
+        case 'thorns':
+          if (ev.monster) this.addFloat(ev.monster.x, ev.monster.y, '反伤 ' + fmt(ev.dmg), '#ffd070', 12, 38);
+          break;
+        case 'block':
+          this.addFloat(this._px, this._py, '格挡', '#9ad0ff', 14, 46);
+          break;
         case 'levelUp':
           this.levelGlow = 1;
           this.addFloat(this._px, this._py, 'LEVEL UP', '#7ae08a', 22, 80);

@@ -203,7 +203,7 @@
     const p = state.player;
     const lv = Math.max(1, Math.min(p.level, DATA.PASSIVE_MAX_LEVEL));
     const t = (lv - 1) / Math.max(1, DATA.PASSIVE_MAX_LEVEL - 1);
-    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0, evade: 0, markDmg: 0, comboPerHit: 0, mpPct: 0, elemDmg: 0, dmgReduce: 0 };
+    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0, evade: 0, markDmg: 0, comboPerHit: 0, mpPct: 0, elemDmg: 0, dmgReduce: 0, hpPct: 0, thorns: 0, blockChance: 0 };
     const pool = p.skills || [];
     const lerp = function (a) { return a[0] + (a[1] - a[0]) * t; };
     for (let i = 0; i < pool.length; i++) {
@@ -221,6 +221,9 @@
       if (g.mpPct) out.mpPct += lerp(g.mpPct);
       if (g.elemDmg) out.elemDmg += lerp(g.elemDmg);
       if (g.dmgReduce) out.dmgReduce += lerp(g.dmgReduce);
+      if (g.hpPct) out.hpPct += lerp(g.hpPct);
+      if (g.thorns) out.thorns += lerp(g.thorns);
+      if (g.blockChance) out.blockChance += lerp(g.blockChance);
     }
     return out;
   }
@@ -256,6 +259,8 @@
       comboPerHit: pas.comboPerHit,
       elemDmg: pas.elemDmg,
       dmgReduce: Math.min(50, pas.dmgReduce),
+      thorns: pas.thorns,
+      blockChance: Math.min(40, pas.blockChance),
     };
 
     // 2. 装备词条叠加
@@ -281,6 +286,9 @@
         }
       }
     }
+
+    // 被动：最大生命百分比
+    if (pas.hpPct) s.hpMax *= (1 + pas.hpPct / 100);
 
     // 成就永久加成
     const ab = state.achBonus || {};
@@ -439,7 +447,7 @@
       blacklist: {},
       skillCds: {},
       gcd: 0,
-      buffs: { berserk: 0, rapidFire: 0 },
+      buffs: { berserk: 0, rapidFire: 0, divineShield: 0 },
       comboTarget: -1,
       comboCount: 0,
     };
@@ -626,9 +634,12 @@
     r.swingY = r.pos.y;
 
     // 普通攻击命中获得怒气
-    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + RAGE_ON_HIT);
+    const rcls = DATA.CLASSES[state.player.cls];
+    const hitGain = (rcls && rcls.resource === 'holy') ? 2 : RAGE_ON_HIT;
+    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + hitGain);
 
-    const atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
+    let atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
+    if (r.buffs && r.buffs.avengingWrath > 0) atkMul *= 1.5;
     let atk = s.atk * atkMul * (1 + (s.elemDmg || 0) / 100);
 
     // 猎手印记：对高生命目标增伤
@@ -714,6 +725,7 @@
 
     if (def.range === 'buff') {
       if (key === 'rapidFire') r.buffs.rapidFire = BERSERK_DURATION;
+      else if (key === 'avengingWrath') r.buffs.avengingWrath = BERSERK_DURATION;
       else r.buffs.berserk = BERSERK_DURATION;
       events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, duration: BERSERK_DURATION });
 
@@ -825,6 +837,18 @@
       }
       events.push({ type: 'skill', key: key, x: r.pos.x, y: r.pos.y });
 
+    } else if (def.range === 'heal') {
+      const healAmt = Math.round(state.stats.hpMax * (def.healPct || 0.25));
+      const beforeHp = state.player.hp;
+      state.player.hp = Math.min(state.stats.hpMax, state.player.hp + healAmt);
+      const realHeal = Math.round(state.player.hp - beforeHp);
+      events.push({ type: 'heal', amount: realHeal });
+      events.push({ type: 'skill', key: key, x: pos.x, y: pos.y });
+
+    } else if (def.range === 'shield') {
+      r.buffs.divineShield = def.duration || 8;
+      events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, duration: def.duration });
+
     } else if (def.range === 'trap') {
       // 陷阱（简化：立刻在脚下引爆）
       let n = 0;
@@ -877,6 +901,10 @@
         if (!nearestMonster(r, def.radius)) continue;
       } else if (def.range === 'escape') {
         if (!nearestMonster(r, 3)) continue;
+      } else if (def.range === 'heal') {
+        if (state.player.hp > state.stats.hpMax * 0.6) continue;
+      } else if (def.range === 'shield') {
+        if (!nearestMonster(r, 6)) continue;
       }
       const evs = castSkillSlot(state, i);
       if (evs) return evs;
@@ -960,16 +988,37 @@
       return;
     }
     const reduce = s.def / (s.def + 26 + state.player.floor * 5);
-    const shieldMul = 1 - Math.min(50, s.dmgReduce || 0) / 100;
+    let shieldMul = 1 - Math.min(50, s.dmgReduce || 0) / 100;
+    // 骑士：格挡（概率减伤 50%）
+    if (s.blockChance > 0 && rng() * 100 < s.blockChance) {
+      shieldMul *= 0.5;
+      events.push({ type: 'block' });
+    }
+    // 骑士：神圣护盾 buff
+    if (state.run && state.run.buffs && state.run.buffs.divineShield > 0) {
+      shieldMul *= 0.6;
+    }
     let dmg = m.atk * (1 - reduce) * shieldMul * (1 + rnd(-0.1, 0.1));
     dmg = Math.max(1, Math.round(dmg));
     state.player.hp -= dmg;
-    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + RAGE_ON_HURT);
+    const hcls = DATA.CLASSES[state.player.cls];
+    const hurtGain = (hcls && hcls.resource === 'holy') ? 2 : RAGE_ON_HURT;
+    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + hurtGain);
     m.attackAnim = 0.3;
     if (m.ranged) {
       events.push({ type: 'monsterShot', from: m, dmg: dmg });
     }
     events.push({ type: 'playerHurt', dmg: dmg, source: m });
+
+    // 骑士：反伤（复仇之怒期间翻倍）
+    if (s.thorns > 0) {
+      let mul = 1;
+      if (state.run && state.run.buffs && state.run.buffs.avengingWrath > 0) mul = 2;
+      const reflect = Math.max(1, Math.round(s.atk * s.thorns / 100 * mul));
+      m.hp -= reflect;
+      events.push({ type: 'thorns', monster: m, dmg: reflect });
+      if (m.hp <= 0) killMonster(state, m, events);
+    }
   }
 
   function playerDies(state, events) {
@@ -1028,6 +1077,8 @@
       state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 8 * dt);
     } else if (clsDef && clsDef.resource === 'mana') {
       state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + (s.mpRegen || 1) * dt);
+    } else if (clsDef && clsDef.resource === 'holy') {
+      state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + 3 * dt);
     }
 
     // 玩家思考
@@ -1048,6 +1099,7 @@
     for (const k in r.skillCds) if (r.skillCds[k] > 0) r.skillCds[k] = Math.max(0, r.skillCds[k] - dt);
     if (r.buffs.berserk > 0) r.buffs.berserk = Math.max(0, r.buffs.berserk - dt);
     if (r.buffs.rapidFire > 0) r.buffs.rapidFire = Math.max(0, r.buffs.rapidFire - dt);
+    if (r.buffs.divineShield > 0) r.buffs.divineShield = Math.max(0, r.buffs.divineShield - dt);
 
     // 自动施法（优先于普通攻击）
     if (state.mode.autoCast) {

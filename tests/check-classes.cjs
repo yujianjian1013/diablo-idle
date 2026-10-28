@@ -1,6 +1,6 @@
 const path = require('path');
 const CORE = require(path.join(__dirname, '..', 'js', 'core.js'));
-for (const cls of ['warrior', 'ranger', 'mage']) {
+for (const cls of ['warrior', 'ranger', 'mage', 'paladin']) {
   CORE.setSeed(4242);
   const st = CORE.createState(cls);
   let deaths = 0, casts = 0;

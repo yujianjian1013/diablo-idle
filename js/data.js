@@ -148,7 +148,7 @@
       resource: 'mana',
       base: { str: 6, agi: 10, vit: 10, int: 20 },
       growth: { str: 0.8, agi: 1.0, vit: 0.6, int: 3.0 },
-      atkCoef: 1.78,
+      atkCoef: 1.5,
       attackRange: 5.0,
       sight: 10,
       skillPool: [
@@ -156,6 +156,22 @@
         'manaSurge', 'elementalMastery', 'arcaneShield', 'frostBlood',
       ],
       defaultSkills: ['fireball', 'frostCone', 'blizzard', 'arcanePower', 'elementalMastery'],
+    },
+    paladin: {
+      key: 'paladin',
+      name: '骑士',
+      desc: '以圣能为资源，正面抗线，能自愈、反伤与护盾，最耐打的职业。',
+      mainStat: 'str',
+      resource: 'holy',
+      base: { str: 16, agi: 10, vit: 18, int: 10 },
+      growth: { str: 2.2, agi: 1.0, vit: 3.2, int: 1.0 },
+      atkCoef: 1.95,
+      sight: 10,
+      skillPool: [
+        'judgement', 'hammerOfJustice', 'holyLight', 'consecration', 'divineShield', 'avengingWrath',
+        'devotion', 'thorns', 'resilience', 'block',
+      ],
+      defaultSkills: ['hammerOfJustice', 'judgement', 'holyLight', 'avengingWrath', 'devotion'],
     },
   };
 
@@ -313,6 +329,56 @@
       key: 'frostBlood', name: '冰冷血脉', type: 'passive',
       desc: '提升暴击伤害',
     },
+
+    /* ---- 骑士 ---- */
+    judgement: {
+      key: 'judgement', name: '审判', type: 'active',
+      cost: 15, cd: 0, range: 'single', dmg: 1.5,
+      desc: '对主目标造成 150% 神圣伤害',
+    },
+    hammerOfJustice: {
+      key: 'hammerOfJustice', name: '制裁之锤', type: 'active',
+      cost: 30, cd: 0, range: 'aoe', radius: 2.5, dmg: 1.4,
+      desc: '对周围 2.5 格内敌人造成 140% 伤害',
+    },
+    holyLight: {
+      key: 'holyLight', name: '圣光术', type: 'active',
+      cost: 25, cd: 10, range: 'heal', healPct: 0.25,
+      desc: '恢复自身 25% 最大生命',
+    },
+    consecration: {
+      key: 'consecration', name: '奉献', type: 'active',
+      cost: 40, cd: 15, range: 'aoe', radius: 3.0, dmg: 1.0,
+      desc: '对周围 3 格内敌人造成 100% 伤害',
+    },
+    divineShield: {
+      key: 'divineShield', name: '神圣护盾', type: 'active',
+      cost: 35, cd: 20, range: 'shield', duration: 8, reduce: 40,
+      desc: '8 秒内受到的伤害降低 40%',
+    },
+    avengingWrath: {
+      key: 'avengingWrath', name: '复仇之怒', type: 'active',
+      cost: 45, cd: 26, range: 'buff', duration: 8,
+      desc: '8 秒内攻击力 +50%、反伤翻倍',
+    },
+
+    /* ---- 骑士被动 ---- */
+    devotion: {
+      key: 'devotion', name: '虔诚', type: 'passive',
+      desc: '提升最大生命值',
+    },
+    thorns: {
+      key: 'thorns', name: '反伤', type: 'passive',
+      desc: '受到攻击时反弹伤害',
+    },
+    resilience: {
+      key: 'resilience', name: '坚韧', type: 'passive',
+      desc: '受到的伤害降低',
+    },
+    block: {
+      key: 'block', name: '格挡', type: 'passive',
+      desc: '受到攻击时有几率格挡一半伤害',
+    },
   };
 
   // 被动按 1 级 → 50 级线性插值
@@ -329,6 +395,10 @@
     elementalMastery: { elemDmg: [3, 10] },
     arcaneShield: { dmgReduce: [3, 12] },
     frostBlood: { critDmg: [10, 30] },
+    devotion: { hpPct: [5, 15] },
+    thorns: { thorns: [25, 60] },
+    resilience: { dmgReduce: [3, 12] },
+    block: { blockChance: [12, 28] },
   };
   const PASSIVE_MAX_LEVEL = 50;
 
@@ -337,7 +407,7 @@
     str: { atkPerPoint: 1.5 },
     agi: { armorPerPoint: 0.2, atkSpeedPerPoint: 0.1 },
     vit: { hpPerPoint: 8 },
-    int: { mpPerPoint: 4, mpRegenPerPoint: 0.12, skillEffectPerPoint: 0.2, mpRegenBase: 3 },
+    int: { mpPerPoint: 4, mpRegenPerPoint: 0.085, skillEffectPerPoint: 0.2, mpRegenBase: 3 },
   };
 
   const CLASS_KEYS = Object.keys(CLASSES);
