@@ -5,7 +5,7 @@ const path = require('path');
 const CORE = require(path.join(__dirname, '..', 'js', 'core.js'));
 
 const RUNS = 5;
-const classes = ['warrior', 'ranger', 'mage', 'paladin'];
+const classes = ['warrior', 'ranger', 'mage', 'paladin', 'priest'];
 
 for (const cls of classes) {
   let sumFloor = 0, sumKills = 0, sumDeaths = 0, sumLv = 0;

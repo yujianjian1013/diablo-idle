@@ -203,7 +203,7 @@
     const p = state.player;
     const lv = Math.max(1, Math.min(p.level, DATA.PASSIVE_MAX_LEVEL));
     const t = (lv - 1) / Math.max(1, DATA.PASSIVE_MAX_LEVEL - 1);
-    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0, evade: 0, markDmg: 0, comboPerHit: 0, mpPct: 0, elemDmg: 0, dmgReduce: 0, hpPct: 0, thorns: 0, blockChance: 0 };
+    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0, evade: 0, markDmg: 0, comboPerHit: 0, mpPct: 0, elemDmg: 0, dmgReduce: 0, hpPct: 0, thorns: 0, blockChance: 0, mpRegenPct: 0 };
     const pool = p.skills || [];
     const lerp = function (a) { return a[0] + (a[1] - a[0]) * t; };
     for (let i = 0; i < pool.length; i++) {
@@ -224,6 +224,7 @@
       if (g.hpPct) out.hpPct += lerp(g.hpPct);
       if (g.thorns) out.thorns += lerp(g.thorns);
       if (g.blockChance) out.blockChance += lerp(g.blockChance);
+      if (g.mpRegenPct) out.mpRegenPct += lerp(g.mpRegenPct);
     }
     return out;
   }
@@ -309,6 +310,7 @@
     s.secondChance = Math.round(s.secondChance * 10) / 10;
     // 法师：魔法上限吃智力与「法力涌动」被动
     s.mpMax = Math.round(s.mpMax * (1 + (pas.mpPct || 0) / 100));
+    s.mpRegen = Math.round(s.mpRegen * (1 + (pas.mpRegenPct || 0) / 100) * 10) / 10;
     // 资源上限同步到 player（法师用魔法，其他职业 100）
     const clsd = DATA.CLASSES[p.cls || CLASS_DEFAULT];
     if (clsd && clsd.resource === 'mana') {

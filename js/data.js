@@ -173,6 +173,23 @@
       ],
       defaultSkills: ['hammerOfJustice', 'judgement', 'holyLight', 'avengingWrath', 'devotion'],
     },
+    priest: {
+      key: 'priest',
+      name: '牧师',
+      desc: '以魔法为资源，远程持续伤害与治疗，最能续航的法系职业。',
+      mainStat: 'int',
+      resource: 'mana',
+      base: { str: 8, agi: 10, vit: 12, int: 18 },
+      growth: { str: 1.0, agi: 1.0, vit: 1.2, int: 2.6 },
+      atkCoef: 1.55,
+      attackRange: 5.0,
+      sight: 10,
+      skillPool: [
+        'smite', 'holyNova', 'heal', 'shadowWordPain', 'powerWordShield', 'divineAscension',
+        'spiritualGuidance', 'holyProtection', 'faith', 'redemption',
+      ],
+      defaultSkills: ['smite', 'holyNova', 'heal', 'powerWordShield', 'faith'],
+    },
   };
 
   /* ---------------- 技能 ---------------- */
@@ -379,6 +396,57 @@
       key: 'block', name: '格挡', type: 'passive',
       desc: '受到攻击时有几率格挡一半伤害',
     },
+
+    /* ---- 牧师 ---- */
+    smite: {
+      key: 'smite', name: '惩击', type: 'active',
+      cost: 20, cd: 0, range: 'single', dmg: 1.5,
+      desc: '对主目标造成 150% 神圣伤害',
+    },
+    holyNova: {
+      key: 'holyNova', name: '神圣新星', type: 'active',
+      cost: 30, cd: 0, range: 'aoe', radius: 2.8, dmg: 1.3,
+      desc: '对周围 2.8 格内敌人造成 130% 伤害',
+    },
+    heal: {
+      key: 'heal', name: '治疗术', type: 'active',
+      cost: 30, cd: 8, range: 'heal', healPct: 0.3,
+      desc: '恢复自身 30% 最大生命',
+    },
+    shadowWordPain: {
+      key: 'shadowWordPain', name: '暗言术：痛', type: 'active',
+      cost: 25, cd: 0, range: 'single', dmg: 0.8,
+      dot: { ratio: 0.5, dur: 6 },
+      desc: '造成 80% 伤害并附加 6 秒持续伤害',
+    },
+    powerWordShield: {
+      key: 'powerWordShield', name: '真言术：盾', type: 'active',
+      cost: 30, cd: 18, range: 'shield', duration: 8, reduce: 30,
+      desc: '8 秒内受到的伤害降低 30%',
+    },
+    divineAscension: {
+      key: 'divineAscension', name: '神圣化身', type: 'active',
+      cost: 45, cd: 26, range: 'buff', duration: 8,
+      desc: '8 秒内攻击力 +35%、治疗量 +50%',
+    },
+
+    /* ---- 牧师被动 ---- */
+    spiritualGuidance: {
+      key: 'spiritualGuidance', name: '精神引导', type: 'passive',
+      desc: '提升魔法回复速度',
+    },
+    holyProtection: {
+      key: 'holyProtection', name: '圣光庇护', type: 'passive',
+      desc: '受到的伤害降低',
+    },
+    faith: {
+      key: 'faith', name: '信仰', type: 'passive',
+      desc: '所有伤害提升',
+    },
+    redemption: {
+      key: 'redemption', name: '救赎', type: 'passive',
+      desc: '提升最大生命值',
+    },
   };
 
   // 被动按 1 级 → 50 级线性插值
@@ -399,6 +467,10 @@
     thorns: { thorns: [25, 60] },
     resilience: { dmgReduce: [3, 12] },
     block: { blockChance: [12, 28] },
+    spiritualGuidance: { mpRegenPct: [10, 30] },
+    holyProtection: { dmgReduce: [3, 12] },
+    faith: { elemDmg: [4, 15] },
+    redemption: { hpPct: [4, 12] },
   };
   const PASSIVE_MAX_LEVEL = 50;
 
