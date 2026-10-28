@@ -1,5 +1,5 @@
 /**
- * screenshot.cjs —— 生成展示截图
+ * screenshot.cjs —— 生成展示截图（等到画面里有怪在战斗时再拍）
  */
 const path = require('path');
 const PW = 'C:/Users/12451/AppData/Local/npm-cache/_npx/4fb06fbc413e8b48/node_modules/playwright';
@@ -14,26 +14,38 @@ const ROOT = path.join(__dirname, '..');
   await page.reload();
   await page.waitForTimeout(1000);
 
-  // 加速：直接给一些金币和等级，让画面更丰富（仅截图用）
+  // 给一点初始资源，让画面更有内容（仅截图用）
   await page.evaluate(() => {
     const s = window.__game.state;
-    s.player.gold = 20000;
-    window.CORE.gainExp(s, 400, []);
+    s.player.gold = 5000;
+    window.CORE.gainExp(s, 300, []);
     window.UI.update(s, true);
   });
 
-  await page.waitForTimeout(70000);
+  let shot = false;
+  for (let i = 0; i < 120; i++) {
+    await page.waitForTimeout(400);
+    const ok = await page.evaluate(() => {
+      const s = window.__game.state;
+      if (!s.run) return false;
+      let near = 0;
+      for (const m of s.run.monsters) {
+        if (m.alive && window.CORE.dist(m, s.run.pos) < 5) near++;
+      }
+      return near >= 3 && s.player.kills >= 8;
+    });
+    if (ok) { shot = true; break; }
+  }
 
   const st = await page.evaluate(() => {
     const s = window.__game.state;
-    return {
-      lv: s.player.level, floor: s.player.floor, kills: s.player.kills,
-      equipped: Object.keys(s.equip).filter(k => s.equip[k]).length,
-      mon: s.monster && s.monster.name,
-      respawn: s.timers.respawn,
-    };
+    let near = 0, alive = 0;
+    for (const m of s.run.monsters) {
+      if (m.alive) { alive++; if (window.CORE.dist(m, s.run.pos) < 6) near++; }
+    }
+    return { lv: s.player.level, floor: s.player.floor, kills: s.player.kills, alive, near, gold: Math.round(s.player.gold) };
   });
-  console.log('截图时状态:', JSON.stringify(st));
+  console.log('截图时机:', shot ? 'OK' : '超时', JSON.stringify(st));
 
   await page.screenshot({ path: path.join(ROOT, 'preview.png') });
   await browser.close();

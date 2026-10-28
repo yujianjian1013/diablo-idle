@@ -17,14 +17,13 @@
      事件分发
      ============================================================ */
   function handleEvent(ev) {
-    const Scene = UI.Scene;
-    Scene.handle(ev);
+    UI.Scene.handle(ev);
     const S = window.SOUND;
     switch (ev.type) {
-      case 'playerHit':
+      case 'hit':
         if (S) S.play(ev.crit ? 'crit' : 'hit');
         break;
-      case 'monsterHit':
+      case 'playerHurt':
         if (S) S.play('hurt');
         break;
       case 'monsterDied':
@@ -41,10 +40,6 @@
       case 'death':
         UI.showBanner('你被击倒', true);
         if (S) S.play('death');
-        break;
-      case 'bossSpawn':
-        UI.showBanner('BOSS 出现', true);
-        if (S) S.play('boss');
         break;
       case 'equip':
       case 'drop':
