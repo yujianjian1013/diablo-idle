@@ -89,6 +89,10 @@
     { name: '石像鬼',   shape: 'beast',    color: '#767676', weight: 9,  ranged: false },
     { name: '血族贵胄', shape: 'mage',     color: '#9a1a2e', weight: 7, ranged: true, range: 6.0 },
     { name: '深渊魔像', shape: 'golem',    color: '#4a3a3a', weight: 7,  ranged: false },
+    { name: '暗影刺客', shape: 'skeleton', color: '#3a2a5a', weight: 8,  ranged: false },
+    { name: '熔岩巨兽', shape: 'golem',    color: '#7a2a1a', weight: 6,  ranged: false },
+    { name: '亡语巫师', shape: 'mage',     color: '#2a5a4a', weight: 7,  ranged: true, range: 5.8 },
+    { name: '霜甲战士', shape: 'skeleton', color: '#4a6a8a', weight: 8,  ranged: false },
   ];
 
   const BOSSES = [
@@ -100,6 +104,10 @@
     { name: '痛苦女王',     shape: 'boss', color: '#8a1a4a' },
     { name: '毁灭者巴尔',   shape: 'boss', color: '#a03a1a' },
     { name: '恐惧之王',     shape: 'boss', color: '#5a1a1a' },
+    { name: '熔火之王',     shape: 'boss', color: '#a0401a' },
+    { name: '霜之哀伤',     shape: 'boss', color: '#3a6a9a' },
+    { name: '腐化祭司',     shape: 'boss', color: '#4a7a3a' },
+    { name: '影之君主',     shape: 'boss', color: '#2a1a4a' },
   ];
 
   /* ---------------- 场景名 ---------------- */
