@@ -34,7 +34,12 @@ const ROOT = path.join(__dirname, '..');
 
   // 选战士
   await page.locator('.class-card.available').first().click();
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1200);
+  // 关闭新手引导
+  if (await page.locator('#introModal.show').count()) {
+    await page.locator('#btnIntroOk').click();
+    await page.waitForTimeout(400);
+  }
   const inGame = await page.locator('#homeScreen.show').count() === 0;
   const st = await page.evaluate(() => {
     const s = window.__game.state;

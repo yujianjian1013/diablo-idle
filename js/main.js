@@ -351,6 +351,19 @@
     els.btnAutoEquip.textContent = state.mode.autoEquip ? '自动装备：开' : '自动装备：关';
     els.btnAutoSell.textContent = state.mode.autoSell ? '自动分解：开' : '自动分解：关';
     UI.update(state, true);
+
+    // 首次进入：新手引导
+    if (!localStorage.getItem('diablo_intro_seen') && !/[?&]auto=1/.test(location.search)) {
+      const intro = document.getElementById('introModal');
+      if (intro) {
+        intro.classList.add('show');
+        document.getElementById('btnIntroOk').onclick = function () {
+          intro.classList.remove('show');
+          localStorage.setItem('diablo_intro_seen', '1');
+        };
+      }
+    }
+
     lastTs = 0;
     running = true;
     requestAnimationFrame(loop);

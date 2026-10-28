@@ -617,3 +617,39 @@ button.skill-btn.passive {
 .ach-item .ach-desc { font-size: 11px; color: #7a6a54; }
 .ach-item .ach-reward { font-size: 11px; color: #c9a227; margin-top: 3px; }
 #btnAchClose { width: 100%; padding: 9px; }
+/* 新手引导 */
+.intro-modal {
+  position: fixed; inset: 0; z-index: 260;
+  display: none; place-items: center;
+  background: rgba(0, 0, 0, 0.86);
+}
+.intro-modal.show { display: grid; }
+.intro-box {
+  width: 460px;
+  padding: 24px;
+  background: linear-gradient(180deg, #1d1712, #0f0b07);
+  border: 1px solid var(--line-hot);
+  border-radius: 3px;
+  box-shadow: 0 0 60px -10px rgba(200, 140, 30, 0.3);
+}
+.intro-box h2 {
+  font-size: 20px; font-weight: normal; color: var(--gold);
+  letter-spacing: 6px; text-align: center; margin-bottom: 20px;
+}
+.intro-list { margin-bottom: 20px; }
+.intro-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px dotted rgba(90, 70, 40, 0.25);
+}
+.intro-item .ii {
+  width: 26px; height: 26px; flex: 0 0 26px;
+  display: grid; place-items: center;
+  color: var(--gold);
+  border: 1px solid #3a2c1d; border-radius: 2px;
+  background: #14100b;
+  font-size: 13px;
+}
+.intro-item b { color: #e0d2b8; font-weight: normal; font-size: 13px; }
+.intro-item div { color: #8a7a62; font-size: 12px; line-height: 1.6; }
+#btnIntroOk { width: 100%; padding: 10px; }

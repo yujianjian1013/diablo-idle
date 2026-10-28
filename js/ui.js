@@ -52,6 +52,7 @@
     ripples: [],
     dying: [],
     projectiles: [],
+    lootBeams: [],
     flash: 0,
     flashColor: '255,220,140',
     hurtFlash: 0,
@@ -203,6 +204,8 @@
           if (ev.x !== undefined) {
             this.addFloat(ev.x, ev.y, '掉落！', qColor(ev.item.quality), 14, 50);
             this.addParts(ev.x, ev.y, qColor(ev.item.quality), 8, 70);
+            this.lootBeams.push({ x: ev.x, y: ev.y, color: qColor(ev.item.quality), t: 1 });
+            if (this.lootBeams.length > 30) this.lootBeams.shift();
           }
           break;
         case 'skill':
@@ -288,6 +291,10 @@
         this.projectiles[i].t += dt * 4.5;
         if (this.projectiles[i].t >= 1) this.projectiles.splice(i, 1);
       }
+      for (let i = this.lootBeams.length - 1; i >= 0; i--) {
+        this.lootBeams[i].t -= dt * 0.42;
+        if (this.lootBeams[i].t <= 0) this.lootBeams.splice(i, 1);
+      }
       for (let i = this.dying.length - 1; i >= 0; i--) {
         this.dying[i].t -= dt * 1.7;
         if (this.dying[i].t <= 0) this.dying.splice(i, 1);
@@ -330,6 +337,37 @@
         ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
       }
       ctx.globalAlpha = 1;
+
+      // 装备掉落光柱
+      for (let i = 0; i < this.lootBeams.length; i++) {
+        const b = this.lootBeams[i];
+        const p = this.worldToScreen(b.x, b.y);
+        const a = Math.min(1, b.t * 1.4);
+        const h = 120;
+        // 竖直光柱
+        const grad = ctx.createLinearGradient(p.x, p.y - h, p.x, p.y);
+        grad.addColorStop(0, 'rgba(255,255,255,0)');
+        grad.addColorStop(0.55, b.color);
+        grad.addColorStop(1, b.color);
+        ctx.globalAlpha = a * 0.55;
+        ctx.fillStyle = grad;
+        ctx.fillRect(p.x - 7, p.y - h, 14, h);
+        // 地面光圈
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = b.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, 18 + (1 - b.t) * 12, 9 + (1 - b.t) * 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        // 上升粒子
+        ctx.fillStyle = b.color;
+        ctx.globalAlpha = a * 0.8;
+        for (let k = 0; k < 3; k++) {
+          const yy = p.y - ((this.t * 40 + k * 45) % h);
+          ctx.fillRect(p.x - 3 + Math.sin(this.t * 3 + k) * 5, yy, 2.5, 2.5);
+        }
+        ctx.globalAlpha = 1;
+      }
 
       // 箭矢弹道
       for (let i = 0; i < this.projectiles.length; i++) {

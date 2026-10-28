@@ -1,0 +1,22 @@
+const path = require('path');
+const PW = 'C:/Users/12451/AppData/Local/npm-cache/_npx/4fb06fbc413e8b48/node_modules/playwright';
+const { chromium } = require(PW);
+const ROOT = path.join(__dirname, '..');
+(async () => {
+  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.goto('file:///' + ROOT.replace(/\\/g, '/') + '/index.html');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForTimeout(600);
+  await page.locator('#btnNewGame').click();
+  await page.waitForTimeout(300);
+  await page.locator('.class-card.available').first().click();
+  await page.waitForTimeout(1200);
+  console.log('引导弹窗:', await page.locator('#introModal.show').count() > 0 ? 'PASS' : 'FAIL');
+  await page.screenshot({ path: path.join(ROOT, 'preview-intro.png') });
+  await page.locator('#btnIntroOk').click();
+  await page.waitForTimeout(8000);
+  await page.screenshot({ path: path.join(ROOT, 'preview-loot.png') });
+  await browser.close();
+})().catch(e => { console.error(e); process.exit(1); });
