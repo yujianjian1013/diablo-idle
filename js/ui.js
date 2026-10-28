@@ -391,17 +391,7 @@
         ctx.fillStyle = 'rgba(110, 220, 130, ' + (this.levelGlow * 0.14) + ')';
         ctx.fillRect(0, 0, W, H);
       }
-      if (this.hurtFlash > 0) {
-        // 受击瞬间整屏泛红，然后快速衰减
-        ctx.fillStyle = 'rgba(190, 24, 24, ' + (this.hurtFlash * 0.14) + ')';
-        ctx.fillRect(0, 0, W, H);
-        // 四周更浓的红色晕影
-        const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.7);
-        vg.addColorStop(0, 'rgba(180,0,0,0)');
-        vg.addColorStop(1, 'rgba(180,0,0,' + (this.hurtFlash * 0.32) + ')');
-        ctx.fillStyle = vg;
-        ctx.fillRect(0, 0, W, H);
-      }
+      // 受击闪屏已移除，只保留角色泛红 + 伤害数字 + 血条 + 震动
       if (this.flash > 0) {
         ctx.fillStyle = 'rgba(' + this.flashColor + ',' + (this.flash * 0.35) + ')';
         ctx.fillRect(0, 0, W, H);
