@@ -1396,6 +1396,31 @@
     els.skillBar.innerHTML = html;
   }
 
+  function renderAchievements(state) {
+    const list = document.getElementById('achList');
+    if (!list) return;
+    let html = '';
+    let done = 0;
+    for (let i = 0; i < D.ACHIEVEMENTS.length; i++) {
+      const a = D.ACHIEVEMENTS[i];
+      const ok = !!state.achievements[a.key];
+      if (ok) done++;
+      const rw = a.reward || {};
+      const parts = [];
+      if (rw.atkPct) parts.push('攻击 +' + rw.atkPct + '%');
+      if (rw.hpPct) parts.push('生命 +' + rw.hpPct + '%');
+      if (rw.goldPct) parts.push('金币 +' + rw.goldPct + '%');
+      if (rw.mfPct) parts.push('寻宝 +' + rw.mfPct + '%');
+      html += '<div class="ach-item ' + (ok ? 'done' : 'todo') + '">' +
+        '<div class="ach-name">' + (ok ? '✔ ' : '○ ') + a.name + '</div>' +
+        '<div class="ach-desc">' + a.desc + '</div>' +
+        '<div class="ach-reward">' + parts.join(' · ') + '</div></div>';
+    }
+    list.innerHTML = html;
+    const prog = document.getElementById('achProgress');
+    if (prog) prog.textContent = done + ' / ' + D.ACHIEVEMENTS.length;
+  }
+
   let bannerTimer = null;
   function showBanner(text, sub) {
     els.banner.textContent = text;
@@ -1461,6 +1486,7 @@
     fmt: fmt,
     qColor: qColor,
     Scene: Scene,
+    renderAchievements: renderAchievements,
     els: els,
   };
 })();

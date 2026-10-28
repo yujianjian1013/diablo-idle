@@ -584,3 +584,36 @@ button.skill-btn.passive {
 .class-card.available .cc-tag { color: #6bd47a; }
 
 .home-version { margin-top: 40px; color: #3a3026; font-size: 11px; letter-spacing: 2px; }
+/* 成就弹窗 */
+.ach-modal {
+  position: fixed; inset: 0; z-index: 250;
+  display: none; place-items: center;
+  background: rgba(0, 0, 0, 0.82);
+}
+.ach-modal.show { display: grid; }
+.ach-box {
+  width: 520px; max-height: 78vh;
+  display: flex; flex-direction: column;
+  padding: 20px;
+  background: linear-gradient(180deg, #1d1712, #0f0b07);
+  border: 1px solid var(--line-hot);
+  border-radius: 3px;
+  box-shadow: 0 0 60px -10px rgba(200, 140, 30, 0.3);
+}
+.ach-box h2 {
+  font-size: 18px; font-weight: normal; color: var(--gold);
+  letter-spacing: 6px; margin-bottom: 14px; text-align: center;
+}
+.ach-box h2 span { font-size: 12px; color: #7a6a54; letter-spacing: 1px; }
+.ach-list { flex: 1; overflow-y: auto; margin-bottom: 14px; }
+.ach-item {
+  padding: 8px 12px; margin-bottom: 6px;
+  border: 1px solid #2a2014; border-left: 3px solid #3a2c1d;
+  border-radius: 2px; background: rgba(0,0,0,0.25);
+}
+.ach-item.done { border-left-color: #6bd47a; background: rgba(40, 80, 45, 0.15); }
+.ach-item .ach-name { font-size: 13px; color: #c8b8a0; margin-bottom: 2px; }
+.ach-item.done .ach-name { color: #7ae08a; }
+.ach-item .ach-desc { font-size: 11px; color: #7a6a54; }
+.ach-item .ach-reward { font-size: 11px; color: #c9a227; margin-top: 3px; }
+#btnAchClose { width: 100%; padding: 9px; }

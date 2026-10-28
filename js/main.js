@@ -41,6 +41,11 @@
         UI.showBanner('你被击倒', true);
         if (S) S.play('death');
         break;
+      case 'achievement':
+        UI.showBanner('成就解锁 · ' + ev.a.name);
+        if (S) S.play('levelup');
+        UI.markDirty();
+        break;
       case 'skill':
         if (S) S.play(ev.key === 'berserk' ? 'boss' : 'crit');
         break;
@@ -171,6 +176,18 @@
       UI.markDirty();
       UI.update(state, true);
     };
+
+    // 成就
+    const btnAch = document.getElementById('btnAch');
+    const achModal = document.getElementById('achModal');
+    if (btnAch) {
+      btnAch.onclick = function () {
+        UI.renderAchievements(state);
+        achModal.classList.add('show');
+      };
+    }
+    const btnAchClose = document.getElementById('btnAchClose');
+    if (btnAchClose) btnAchClose.onclick = function () { achModal.classList.remove('show'); };
 
     // 返回首页（自动保存）
     const btnHome = document.getElementById('btnHome');

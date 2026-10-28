@@ -276,6 +276,13 @@
       }
     }
 
+    // 成就永久加成
+    const ab = state.achBonus || {};
+    if (ab.atkPct) s.atk *= (1 + ab.atkPct / 100);
+    if (ab.hpPct) s.hpMax *= (1 + ab.hpPct / 100);
+    if (ab.goldPct) s.goldFind += ab.goldPct;
+    if (ab.mfPct) s.magicFind += ab.mfPct;
+
     s.atk = Math.round(s.atk * 10) / 10;
     s.hpMax = Math.round(s.hpMax);
     s.def = Math.round(s.def * 10) / 10;
@@ -289,6 +296,36 @@
     return s;
   }
 
+
+  /* ==================== 成就 ==================== */
+  function checkAchievements(state) {
+    const p = state.player;
+    const unlocked = [];
+    for (let i = 0; i < DATA.ACHIEVEMENTS.length; i++) {
+      const a = DATA.ACHIEVEMENTS[i];
+      if (state.achievements[a.key]) continue;
+      let ok = false;
+      switch (a.type) {
+        case 'floor': ok = p.bestFloor >= a.value; break;
+        case 'kills': ok = p.kills >= a.value; break;
+        case 'level': ok = p.level >= a.value; break;
+        case 'gold': ok = (p.goldEarned || 0) >= a.value; break;
+        case 'elite': ok = (p.elitesKilled || 0) >= a.value; break;
+        case 'boss': ok = (p.bossesKilled || 0) >= a.value; break;
+        case 'items': ok = (p.itemsFound || 0) >= a.value; break;
+        case 'unique': ok = (p.uniquesFound || 0) >= a.value; break;
+      }
+      if (ok) {
+        state.achievements[a.key] = true;
+        const rw = a.reward || {};
+        for (const k in rw) state.achBonus[k] = (state.achBonus[k] || 0) + rw[k];
+        unlocked.push(a);
+        pushLog(state, '成就解锁：' + a.name, 'log-legendary');
+      }
+    }
+    if (unlocked.length) state.stats = computeStats(state);
+    return unlocked;
+  }
 
   /* ==================== 怪物 ==================== */
   function createMonster(floor, x, y, isBoss) {
@@ -345,6 +382,7 @@
         cls: cls,
         level: 1, exp: 0, expNext: expToNext(1), hp: 100,
         gold: 0, floor: 1, kills: 0, deaths: 0, bestFloor: 1,
+        goldEarned: 0, itemsFound: 0, elitesKilled: 0, bossesKilled: 0, uniquesFound: 0,
         stats: baseStats(1, cls),
         rage: 0, rageMax: RAGE_MAX,
         skills: def.defaultSkills.slice(),
@@ -352,6 +390,8 @@
       equip: emptyEquip(),
       bag: [],
       mode: { autoEquip: true, autoSell: true, autoCast: true },
+      achievements: {},
+      achBonus: { atkPct: 0, hpPct: 0, goldPct: 0, mfPct: 0 },
       log: [],
       lastSave: Date.now(),
       stats: null,
@@ -450,6 +490,9 @@
   }
 
   function handleDrop(state, item, events) {
+    const p0 = state.player;
+    p0.itemsFound = (p0.itemsFound || 0) + 1;
+    if (item.quality === 'unique') p0.uniquesFound = (p0.uniquesFound || 0) + 1;
     const cur = state.equip[item.slot];
     const better = cur ? item.score > cur.score : item.score > 0;
     if (state.mode.autoEquip && better) {
@@ -831,7 +874,10 @@
     const gold = Math.round(monsterGold(p.floor) * (1 + state.stats.goldFind / 100) * (m.isBoss ? 10 : 1));
     const exp = Math.round(monsterExp(p.floor) * (m.isBoss ? 7 : 1));
     p.gold += gold;
+    p.goldEarned = (p.goldEarned || 0) + gold;
     p.kills += 1;
+    if (m.isElite) p.elitesKilled = (p.elitesKilled || 0) + 1;
+    if (m.isBoss) p.bossesKilled = (p.bossesKilled || 0) + 1;
     gainExp(state, exp, events);
 
     events.push({ type: 'monsterDied', monster: m, gold: gold, exp: exp });
@@ -950,6 +996,14 @@
     if (!state.run) enterFloor(state, state.player.floor || 1);
     const r = state.run;
     const s = state.stats;
+
+    // 成就检查（每秒一次）
+    r.achCd = (r.achCd || 0) - dt;
+    if (r.achCd <= 0) {
+      r.achCd = 1;
+      const unlocked = checkAchievements(state);
+      for (let ai = 0; ai < unlocked.length; ai++) events.push({ type: 'achievement', a: unlocked[ai] });
+    }
 
     // 资源自然回复（游侠集中值）
     const clsDef = DATA.CLASSES[state.player.cls];
@@ -1109,6 +1163,8 @@
       equip: state.equip,
       bag: state.bag,
       mode: state.mode,
+      achievements: state.achievements,
+      achBonus: state.achBonus,
       log: state.log.slice(0, 30),
       lastSave: Date.now(),
       itemId: _itemId,
@@ -1144,6 +1200,8 @@
       state.equip = Object.assign(emptyEquip(), data.equip || {});
       state.bag = Array.isArray(data.bag) ? data.bag : [];
       state.mode = Object.assign(state.mode, data.mode || {});
+      state.achievements = data.achievements || {};
+      state.achBonus = Object.assign({ atkPct: 0, hpPct: 0, goldPct: 0, mfPct: 0 }, data.achBonus || {});
       state.log = Array.isArray(data.log) ? data.log : [];
       state.lastSave = data.lastSave || Date.now();
       _itemId = Math.max(data.itemId || 1, 1);
@@ -1192,6 +1250,7 @@
     passiveBonuses: passiveBonuses,
     castSkillSlot: castSkillSlot,
     autoCast: autoCast,
+    checkAchievements: checkAchievements,
     setSeed: setSeed,
     rng: rng,
     rnd: rnd,

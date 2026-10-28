@@ -270,6 +270,25 @@
   };
 
   const CLASS_KEYS = Object.keys(CLASSES);
+
+  /* ---------------- 成就 ---------------- */
+  // type: floor / kills / level / gold / elite / boss / unique / ascension
+  const ACHIEVEMENTS = [
+    { key: 'firstStep',  name: '初入地牢', desc: '到达第 1 层',        type: 'floor', value: 1,    reward: { atkPct: 1 } },
+    { key: 'deep10',     name: '深入者',   desc: '到达第 10 层',       type: 'floor', value: 10,   reward: { atkPct: 2 } },
+    { key: 'deep25',     name: '探索者',   desc: '到达第 25 层',       type: 'floor', value: 25,   reward: { hpPct: 2 } },
+    { key: 'deep50',     name: '深渊行者', desc: '到达第 50 层',       type: 'floor', value: 50,   reward: { atkPct: 3, hpPct: 3 } },
+    { key: 'kill100',    name: '屠戮者',   desc: '累计击杀 100 只怪物', type: 'kills', value: 100,  reward: { atkPct: 1 } },
+    { key: 'kill1000',   name: '杀戮机器', desc: '累计击杀 1000 只怪物', type: 'kills', value: 1000, reward: { atkPct: 2 } },
+    { key: 'kill5000',   name: '万人斩',   desc: '累计击杀 5000 只怪物', type: 'kills', value: 5000, reward: { atkPct: 4 } },
+    { key: 'lv20',       name: '独当一面', desc: '达到 20 级',         type: 'level', value: 20,   reward: { hpPct: 2 } },
+    { key: 'lv40',       name: '身经百战', desc: '达到 40 级',         type: 'level', value: 40,   reward: { hpPct: 3 } },
+    { key: 'elite50',    name: '精英猎人', desc: '击杀 50 只精英怪',   type: 'elite', value: 50,   reward: { mfPct: 10 } },
+    { key: 'boss10',     name: '首领终结者', desc: '击杀 10 个 BOSS',  type: 'boss',  value: 10,   reward: { atkPct: 2 } },
+    { key: 'gold100k',   name: '富甲一方', desc: '累计获得 10 万金币', type: 'gold',  value: 100000, reward: { goldPct: 10 } },
+    { key: 'unique1',    name: '暗金收藏家', desc: '获得 1 件暗金装备', type: 'unique', value: 1,  reward: { mfPct: 5 } },
+    { key: 'item200',    name: '装备达人', desc: '累计拾取 200 件装备', type: 'items', value: 200,  reward: { mfPct: 5 } },
+  ];
   const DATA = {
     QUALITY: QUALITY,
     QUALITY_ORDER: QUALITY_ORDER,
@@ -288,6 +307,7 @@
     PASSIVE_GROWTH: PASSIVE_GROWTH,
     PASSIVE_MAX_LEVEL: PASSIVE_MAX_LEVEL,
     STAT_COEF: STAT_COEF,
+    ACHIEVEMENTS: ACHIEVEMENTS,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DATA;
