@@ -1447,6 +1447,40 @@
     els.skillBar.innerHTML = html;
   }
 
+  function renderSkillPool(state) {
+    const pool = document.getElementById('skillPool');
+    if (!pool) return;
+    const p = state.player;
+    const cls = C.CLASSES[p.cls];
+    if (!cls) return;
+    const equipped = p.skills || [];
+    let html = '';
+    let count = 0;
+    for (let i = 0; i < cls.skillPool.length; i++) {
+      const key = cls.skillPool[i];
+      const def = C.SKILLS[key];
+      if (!def) continue;
+      const isEquipped = equipped.indexOf(key) >= 0;
+      if (isEquipped) count++;
+      const isPassive = def.type === 'passive';
+      let tag;
+      if (isPassive) {
+        tag = '被动';
+      } else {
+        tag = def.cost + ' ' + ({ rage: '怒气', energy: '集中', holy: '圣能', mana: '魔法' }[cls.resource] || '资源');
+        if (def.cd) tag += ' / ' + def.cd + 's';
+      }
+      html += '<div class="skill-card' + (isEquipped ? ' equipped' : '') + (isPassive ? ' passive' : '') +
+        '" data-skill="' + key + '">' +
+        '<div class="sc-main"><div class="sc-name">' + def.name + '</div>' +
+        '<div class="sc-desc">' + def.desc + '</div></div>' +
+        '<span class="sc-tag">' + tag + '</span></div>';
+    }
+    pool.innerHTML = html;
+    const cnt = document.getElementById('skillCount');
+    if (cnt) cnt.textContent = count + ' / 5';
+  }
+
   function renderAchievements(state) {
     const list = document.getElementById('achList');
     if (!list) return;
@@ -1544,6 +1578,7 @@
     qColor: qColor,
     Scene: Scene,
     renderAchievements: renderAchievements,
+    renderSkillPool: renderSkillPool,
     els: els,
   };
 })();

@@ -79,6 +79,7 @@
         </div>
         <div class="btn-row skill-row" id="skillBar"></div>
         <div class="btn-row">
+          <button id="btnSkillCfg">技 能</button>
           <button id="btnAch">成 就</button>
           <button id="btnHome" class="danger">返回首页</button>
         </div>
@@ -107,6 +108,15 @@
 </div>
 
 <div id="tooltip"></div>
+
+<div id="skillModal" class="skill-modal">
+  <div class="skill-box">
+    <h2>技能配置 <span id="skillCount"></span></h2>
+    <div class="skill-tip">点击技能切换装配状态，最多 5 个</div>
+    <div id="skillPool" class="skill-pool"></div>
+    <button id="btnSkillClose">关 闭</button>
+  </div>
+</div>
 
 <div id="settingsModal" class="settings-modal">
   <div class="settings-box">

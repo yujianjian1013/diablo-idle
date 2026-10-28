@@ -1,0 +1,35 @@
+const path = require('path');
+const PW = 'C:/Users/12451/AppData/Local/npm-cache/_npx/4fb06fbc413e8b48/node_modules/playwright';
+const { chromium } = require(PW);
+const ROOT = path.join(__dirname, '..');
+(async () => {
+  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors = [];
+  page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto('file:///' + ROOT.replace(/\\/g, '/') + '/index.html?auto=1');
+  await page.evaluate(() => localStorage.setItem('diablo_intro_seen','1'));
+  await page.reload();
+  await page.waitForTimeout(2500);
+  await page.locator('#btnSkillCfg').click();
+  await page.waitForTimeout(400);
+  console.log('技能面板:', await page.locator('#skillModal.show').count() > 0 ? 'PASS' : 'FAIL');
+  console.log('技能卡数:', await page.locator('.skill-card').count());
+  console.log('已装:', await page.locator('.skill-card.equipped').count());
+  await page.screenshot({ path: path.join(ROOT, 'preview-skills.png') });
+  // 卸下一个再装另一个
+  const before = await page.evaluate(() => window.__game.state.player.skills.join(','));
+  await page.locator('.skill-card.equipped').first().click();
+  await page.waitForTimeout(300);
+  const afterUn = await page.evaluate(() => window.__game.state.player.skills.join(','));
+  await page.locator('.skill-card:not(.equipped)').first().click();
+  await page.waitForTimeout(300);
+  const afterEq = await page.evaluate(() => window.__game.state.player.skills.join(','));
+  console.log('换装前:', before);
+  console.log('卸下后:', afterUn);
+  console.log('装上后:', afterEq);
+  console.log('换装生效:', (before !== afterUn && afterUn !== afterEq) ? 'PASS' : 'FAIL');
+  console.log('控制台错误:', errors.length ? errors : '无');
+  await browser.close();
+})().catch(e => { console.error(e); process.exit(1); });

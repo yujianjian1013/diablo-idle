@@ -193,6 +193,49 @@
       UI.update(state, true);
     };
 
+    // 技能配置
+    const skillModal = document.getElementById('skillModal');
+    const btnSkillCfg = document.getElementById('btnSkillCfg');
+    const skillPool = document.getElementById('skillPool');
+    if (btnSkillCfg) {
+      btnSkillCfg.onclick = function () {
+        UI.renderSkillPool(state);
+        skillModal.classList.add('show');
+      };
+    }
+    if (skillPool) {
+      skillPool.addEventListener('click', function (e) {
+        const card = e.target.closest('.skill-card');
+        if (!card) return;
+        const key = card.dataset.skill;
+        const idx = state.player.skills.indexOf(key);
+        if (idx >= 0) {
+          // 卸下
+          state.player.skills[idx] = null;
+          C.pushLog(state, '卸下技能：' + C.SKILLS[key].name);
+        } else {
+          // 装上（找空位）
+          const empty = state.player.skills.indexOf(null);
+          if (empty < 0 && state.player.skills.length < 5) {
+            state.player.skills.push(key);
+          } else if (empty >= 0) {
+            state.player.skills[empty] = key;
+          } else {
+            UI.showBanner('技能位已满，先卸下一个', true);
+            return;
+          }
+          C.pushLog(state, '装配技能：' + C.SKILLS[key].name);
+        }
+        state.stats = C.computeStats(state);
+        UI.renderSkillPool(state);
+        UI.markDirty();
+        UI.update(state, true);
+        if (window.SOUND) window.SOUND.play('click');
+      });
+    }
+    const btnSkillClose = document.getElementById('btnSkillClose');
+    if (btnSkillClose) btnSkillClose.onclick = function () { skillModal.classList.remove('show'); };
+
     // 成就
     const btnAch = document.getElementById('btnAch');
     const achModal = document.getElementById('achModal');
