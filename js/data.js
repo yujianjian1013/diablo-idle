@@ -528,6 +528,15 @@
     ring1:  ['atk', 'crit', 'splash', 'splashRadius', 'goldFind', 'magicFind', 'lifesteal', 'rageRegen', 'energyRegen', 'holyRegen', 'manaRegen'],
     ring2:  ['atk', 'crit', 'splash', 'splashRadius', 'goldFind', 'magicFind', 'lifesteal', 'rageRegen', 'energyRegen', 'holyRegen', 'manaRegen'],
   };
+
+  /* ---------------- 每日目标 ---------------- */
+  // 每天 0 点重置；type 对应 core 里的计数
+  const DAILY_GOALS = [
+    { key: 'kills',  name: '今日击杀', desc: '击杀 1500 只怪物', target: 1500, reward: { gold: 20000 } },
+    { key: 'floors', name: '深入探索', desc: '推进 25 层地牢',   target: 25,  reward: { items: 2 } },
+    { key: 'elites', name: '精英猎手', desc: '击杀 100 只精英怪', target: 100, reward: { gold: 40000 } },
+  ];
+
   const DATA = {
     QUALITY: QUALITY,
     QUALITY_ORDER: QUALITY_ORDER,
@@ -547,6 +556,7 @@
     PASSIVE_MAX_LEVEL: PASSIVE_MAX_LEVEL,
     STAT_COEF: STAT_COEF,
     ACHIEVEMENTS: ACHIEVEMENTS,
+    DAILY_GOALS: DAILY_GOALS,
     SLOT_AFFIX_POOL: SLOT_AFFIX_POOL,
   };
 

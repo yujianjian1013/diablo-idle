@@ -1447,6 +1447,35 @@
     els.skillBar.innerHTML = html;
   }
 
+  function renderDaily(state) {
+    const list = document.getElementById('dailyList');
+    if (!list) return;
+    const d = C.ensureDaily(state);
+    const dateEl = document.getElementById('dailyDate');
+    if (dateEl) dateEl.textContent = d.date;
+    let html = '';
+    for (let i = 0; i < D.DAILY_GOALS.length; i++) {
+      const g = D.DAILY_GOALS[i];
+      const cur = Math.min(g.target, d.progress[g.key] || 0);
+      const done = cur >= g.target;
+      const claimed = !!d.claimed[g.key];
+      const pct = Math.round((cur / g.target) * 100);
+      let rewardText = '';
+      if (g.reward.gold) rewardText = '+' + fmt(g.reward.gold) + ' 金币';
+      if (g.reward.items) rewardText = '+' + g.reward.items + ' 件装备';
+      html += '<div class="ach-item ' + (done ? 'done' : '') + '">' +
+        '<div class="ach-name">' + (claimed ? '✔ ' : '') + g.name +
+        '<span style="float:right;color:#c9a227">' + rewardText + '</span></div>' +
+        '<div class="ach-desc">' + g.desc + '</div>' +
+        '<div class="daily-bar"><div class="daily-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="ach-reward">' + cur + ' / ' + g.target +
+        (claimed ? ' · 已领取' : (done ? ' · 可领取' : '')) + '</div>' +
+        (done && !claimed ? '<button class="daily-claim" data-goal="' + g.key + '">领取奖励</button>' : '') +
+        '</div>';
+    }
+    list.innerHTML = html;
+  }
+
   function renderSkillPool(state) {
     const pool = document.getElementById('skillPool');
     if (!pool) return;
@@ -1579,6 +1608,7 @@
     Scene: Scene,
     renderAchievements: renderAchievements,
     renderSkillPool: renderSkillPool,
+    renderDaily: renderDaily,
     els: els,
   };
 })();

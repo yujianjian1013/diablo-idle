@@ -193,6 +193,36 @@
       UI.update(state, true);
     };
 
+    // 每日目标
+    const dailyModal = document.getElementById('dailyModal');
+    const btnDaily = document.getElementById('btnDaily');
+    const dailyList = document.getElementById('dailyList');
+    if (btnDaily) {
+      btnDaily.onclick = function () {
+        UI.renderDaily(state);
+        dailyModal.classList.add('show');
+      };
+    }
+    if (dailyList) {
+      dailyList.addEventListener('click', function (e) {
+        const btn = e.target.closest('.daily-claim');
+        if (!btn) return;
+        const res = C.claimDaily(state, btn.dataset.goal);
+        if (res.ok) {
+          if (window.SOUND) window.SOUND.play('chest');
+          for (const ev of res.events) {
+            if (ev.type === 'heal' || ev.type === 'drop' || ev.type === 'equip') UI.Scene.handle(ev);
+          }
+          UI.showBanner('每日目标完成 · ' + res.goal.name);
+          UI.markDirty();
+          UI.update(state, true);
+          UI.renderDaily(state);
+        }
+      });
+    }
+    const btnDailyClose = document.getElementById('btnDailyClose');
+    if (btnDailyClose) btnDailyClose.onclick = function () { dailyModal.classList.remove('show'); };
+
     // 技能配置
     const skillModal = document.getElementById('skillModal');
     const btnSkillCfg = document.getElementById('btnSkillCfg');

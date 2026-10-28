@@ -330,6 +330,61 @@
   }
 
 
+  /* ==================== 每日目标 ==================== */
+  function todayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function ensureDaily(state) {
+    const today = todayKey();
+    if (!state.daily || state.daily.date !== today) {
+      state.daily = { date: today, progress: { kills: 0, floors: 0, elites: 0 }, claimed: {}, notified: {} };
+    }
+    return state.daily;
+  }
+
+  /** 记录每日进度；返回本次是否有目标刚好完成 */
+  function addDailyProgress(state, type, amount) {
+    const d = ensureDaily(state);
+    if (!(type in d.progress)) return [];
+    d.progress[type] += amount;
+    const done = [];
+    for (let i = 0; i < DATA.DAILY_GOALS.length; i++) {
+      const g = DATA.DAILY_GOALS[i];
+      if (!d.claimed[g.key] && !d.notified[g.key] && d.progress[g.key] >= g.target) {
+        d.notified[g.key] = true;
+        done.push(g);
+      }
+    }
+    return done;
+  }
+
+  /** 领取每日奖励 */
+  function claimDaily(state, key) {
+    const d = ensureDaily(state);
+    const goal = DATA.DAILY_GOALS.find(function (g) { return g.key === key; });
+    if (!goal) return { ok: false, reason: 'unknown' };
+    if (d.claimed[key]) return { ok: false, reason: 'claimed' };
+    if (d.progress[key] < goal.target) return { ok: false, reason: 'progress' };
+    d.claimed[key] = true;
+    const events = [];
+    const rw = goal.reward || {};
+    if (rw.gold) {
+      state.player.gold += rw.gold;
+      events.push({ type: 'dailyReward', text: '+' + rw.gold + ' 金币' });
+    }
+    if (rw.items) {
+      for (let i = 0; i < rw.items; i++) {
+        const item = dropItem(state, state.player.floor + 2);
+        handleDrop(state, item, events);
+      }
+      events.push({ type: 'dailyReward', text: '获得 ' + rw.items + ' 件装备' });
+    }
+    pushLog(state, '完成每日目标：' + goal.name, 'log-gold');
+    return { ok: true, events: events, goal: goal };
+  }
+
   /* ==================== 成就 ==================== */
   function checkAchievements(state) {
     const p = state.player;
@@ -426,6 +481,7 @@
       mode: { autoEquip: true, autoSell: true, autoCast: true },
       achievements: {},
       achBonus: { atkPct: 0, hpPct: 0, goldPct: 0, mfPct: 0 },
+      daily: { date: todayKey(), progress: { kills: 0, floors: 0, elites: 0 }, claimed: {}, notified: {} },
       log: [],
       lastSave: Date.now(),
       stats: null,
@@ -933,6 +989,12 @@
     p.kills += 1;
     if (m.isElite) p.elitesKilled = (p.elitesKilled || 0) + 1;
     if (m.isBoss) p.bossesKilled = (p.bossesKilled || 0) + 1;
+    const dailyDone1 = addDailyProgress(state, 'kills', 1);
+    if (m.isElite) {
+      const dailyDone2 = addDailyProgress(state, 'elites', 1);
+      for (let di = 0; di < dailyDone2.length; di++) events.push({ type: 'dailyDone', goal: dailyDone2[di] });
+    }
+    for (let di = 0; di < dailyDone1.length; di++) events.push({ type: 'dailyDone', goal: dailyDone1[di] });
     gainExp(state, exp, events);
 
     events.push({ type: 'monsterDied', monster: m, gold: gold, exp: exp });
@@ -1062,6 +1124,8 @@
     enterFloor(state, next);
     pushLog(state, '进入第 ' + next + ' 层「' + floorName(next) + '」', 'log-boss');
     events.push({ type: 'floorUp', floor: next });
+    const dailyDoneF = addDailyProgress(state, 'floors', 1);
+    for (let di = 0; di < dailyDoneF.length; di++) events.push({ type: 'dailyDone', goal: dailyDoneF[di] });
   }
 
   /* ==================== 主循环 ==================== */
@@ -1288,6 +1352,7 @@
       mode: state.mode,
       achievements: state.achievements,
       achBonus: state.achBonus,
+      daily: state.daily,
       log: state.log.slice(0, 30),
       lastSave: Date.now(),
       itemId: _itemId,
@@ -1325,6 +1390,8 @@
       state.mode = Object.assign(state.mode, data.mode || {});
       state.achievements = data.achievements || {};
       state.achBonus = Object.assign({ atkPct: 0, hpPct: 0, goldPct: 0, mfPct: 0 }, data.achBonus || {});
+      state.daily = data.daily || null;
+      ensureDaily(state);
       state.log = Array.isArray(data.log) ? data.log : [];
       state.lastSave = data.lastSave || Date.now();
       _itemId = Math.max(data.itemId || 1, 1);
@@ -1374,6 +1441,9 @@
     castSkillSlot: castSkillSlot,
     autoCast: autoCast,
     checkAchievements: checkAchievements,
+    ensureDaily: ensureDaily,
+    claimDaily: claimDaily,
+    todayKey: todayKey,
     setSeed: setSeed,
     rng: rng,
     rnd: rnd,
