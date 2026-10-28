@@ -375,6 +375,15 @@
           let alpha = 1;
           if (inFront && sdist < TW * 1.35) alpha = 0.34;
           else if (inFront && sdist < TW * 1.95) alpha = 0.66;
+          // 怪物身边的墙也淡出，避免怪物被墙完全遮住
+          if (alpha === 1) {
+            for (let mi = 0; mi < run.monsters.length; mi++) {
+              const mm = run.monsters[mi];
+              if (!mm.alive) continue;
+              const mdx = (x + 0.5) - mm.x, mdy = (y + 0.5) - mm.y;
+              if (mdx * mdx + mdy * mdy < 1.8) { alpha = 0.45; break; }
+            }
+          }
           push(x + y, { kind: 'wall', px: p.x, py: p.y, south, east, h: hash2(x, y), alpha });
         }
       }
