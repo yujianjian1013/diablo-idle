@@ -43,8 +43,20 @@
         break;
       case 'achievement':
         UI.showBanner('成就解锁 · ' + ev.a.name);
-        if (S) S.play('levelup');
+        if (S) S.play('achievement');
         UI.markDirty();
+        break;
+      case 'heal':
+        if (S) S.play('heal');
+        break;
+      case 'block':
+        if (S) S.play('block');
+        break;
+      case 'dodge':
+        if (S) S.play('dodge');
+        break;
+      case 'thorns':
+        if (S) S.play('hit');
         break;
       case 'skill':
         if (S) S.play(ev.key === 'berserk' ? 'boss' : 'crit');

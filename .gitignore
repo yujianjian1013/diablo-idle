@@ -11,3 +11,6 @@ node_modules/
 *.swp
 # 临时截图
 shot*.png
+
+# 构建产物
+dist/

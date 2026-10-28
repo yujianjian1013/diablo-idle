@@ -360,17 +360,17 @@
     },
     hammerOfJustice: {
       key: 'hammerOfJustice', name: '制裁之锤', type: 'active',
-      cost: 30, cd: 0, range: 'aoe', radius: 2.5, dmg: 1.4,
+      cost: 30, cd: 0, range: 'aoe', radius: 2.6, dmg: 1.8,
       desc: '对周围 2.5 格内敌人造成 140% 伤害',
     },
     holyLight: {
       key: 'holyLight', name: '圣光术', type: 'active',
-      cost: 25, cd: 10, range: 'heal', healPct: 0.25,
+      cost: 25, cd: 8, range: 'heal', healPct: 0.35,
       desc: '恢复自身 25% 最大生命',
     },
     consecration: {
       key: 'consecration', name: '奉献', type: 'active',
-      cost: 40, cd: 15, range: 'aoe', radius: 3.0, dmg: 1.0,
+      cost: 40, cd: 15, range: 'aoe', radius: 3.0, dmg: 1.3,
       desc: '对周围 3 格内敌人造成 100% 伤害',
     },
     divineShield: {
@@ -468,7 +468,7 @@
     elementalMastery: { elemDmg: [3, 10] },
     arcaneShield: { dmgReduce: [3, 12] },
     frostBlood: { critDmg: [10, 30] },
-    devotion: { hpPct: [5, 15] },
+    devotion: { hpPct: [8, 20] },
     thorns: { thorns: [25, 60] },
     resilience: { dmgReduce: [3, 12] },
     block: { blockChance: [12, 28] },

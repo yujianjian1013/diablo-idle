@@ -96,6 +96,19 @@
       setTimeout(() => tone(587, 0.16, 'triangle', 0.06), 80);
     },
     click() { tone(520, 0.03, 'square', 0.04, 380); },
+    heal() {
+      tone(660, 0.18, 'sine', 0.055);
+      setTimeout(() => tone(880, 0.22, 'sine', 0.045), 70);
+    },
+    block() {
+      noise(0.07, 0.055, 1400);
+      tone(190, 0.09, 'square', 0.05, 120);
+    },
+    achievement() {
+      const notes = [523, 659, 784, 1046, 1318];
+      notes.forEach((f, i) => setTimeout(() => tone(f, 0.14, 'triangle', 0.065), i * 85));
+    },
+    dodge() { noise(0.09, 0.03, 2200); tone(900, 0.06, 'sine', 0.03, 1400); },
   };
 
   window.SOUND = {
