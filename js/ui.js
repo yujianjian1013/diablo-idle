@@ -57,10 +57,16 @@
     levelGlow: 0,
     swingT: 0,
     _px: 0, _py: 0,
+    mmDirty: true,
+    mmLastX: 0, mmLastY: 0,
+    mmCanvas: null, mmCtx: null,
+    mmSize: 158,
 
     init(canvas) {
       this.canvas = canvas;
       this.ctx = canvas.getContext('2d');
+      this.mmCanvas = document.createElement('canvas');
+      this.mmCtx = this.mmCanvas.getContext('2d');
       this.resize();
       window.addEventListener('resize', () => this.resize());
       if (window.ResizeObserver) new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
@@ -76,6 +82,13 @@
       this.canvas.style.width = this.W + 'px';
       this.canvas.style.height = this.H + 'px';
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      this.mmSize = Math.round(Math.max(104, Math.min(158, this.W * 0.26)));
+      if (this.mmCanvas) {
+        const px2 = Math.round(this.mmSize * this.dpr);
+        this.mmCanvas.width = px2;
+        this.mmCanvas.height = px2;
+        this.mmDirty = true;
+      }
     },
 
     iso(gx, gy) { return { x: (gx - gy) * TW / 2, y: (gx + gy) * TH / 2 }; },
@@ -166,6 +179,10 @@
       const p = state.run.pos;
       this._px = p.x; this._py = p.y;
 
+      if (Math.abs(p.x - this.mmLastX) + Math.abs(p.y - this.mmLastY) > 0.35) {
+        this.mmLastX = p.x; this.mmLastY = p.y;
+        this.mmDirty = true;
+      }
       const target = this.iso(p.x, p.y);
       if (!this.camInit) {
         this.cam.x = target.x; this.cam.y = target.y;
@@ -268,6 +285,81 @@
       g.addColorStop(1, 'rgba(0,0,0,0.42)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+
+      this.drawMinimap(ctx, map, run);
+    },
+
+    /* ---------- 小地图 ---------- */
+    drawMinimap(ctx, map, run) {
+      const size = this.mmSize;
+      const x0 = this.W - size - 14;
+      const y0 = 14;
+      const cell = size / Math.max(map.w, map.h);
+
+      if (this.mmDirty) {
+        this.rebuildMinimap(map, size, cell);
+        this.mmDirty = false;
+      }
+
+      ctx.save();
+      // 底板
+      ctx.fillStyle = 'rgba(10,8,6,0.82)';
+      ctx.fillRect(x0 - 1, y0 - 1, size + 2, size + 2);
+      ctx.drawImage(this.mmCanvas, x0, y0, size, size);
+
+      // 怪物点（只画已探索区域）
+      for (let i = 0; i < run.monsters.length; i++) {
+        const m = run.monsters[i];
+        if (!m.alive) continue;
+        const ti = Math.floor(m.y) * map.w + Math.floor(m.x);
+        if (!map.explored[ti]) continue;
+        ctx.fillStyle = m.isBoss ? '#ff5a2a' : '#d24a4a';
+        ctx.beginPath();
+        ctx.arc(x0 + (m.x + 0.5) * cell, y0 + (m.y + 0.5) * cell, m.isBoss ? 3.4 : 2.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 玩家（呼吸光点）
+      const pulse = 0.65 + Math.sin(this.t * 4) * 0.35;
+      ctx.fillStyle = 'rgba(255, 214, 90, ' + (0.35 * pulse) + ')';
+      ctx.beginPath();
+      ctx.arc(x0 + run.pos.x * cell, y0 + run.pos.y * cell, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffd750';
+      ctx.beginPath();
+      ctx.arc(x0 + run.pos.x * cell, y0 + run.pos.y * cell, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 边框 + 标题
+      ctx.strokeStyle = 'rgba(140,116,80,0.6)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x0 + 0.5, y0 + 0.5, size - 1, size - 1);
+      ctx.font = '10px "Songti SC", Georgia, serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(150,130,100,0.85)';
+      ctx.fillText('地牢地图', x0 + 2, y0 - 4);
+      ctx.restore();
+    },
+
+    rebuildMinimap(map, size, cell) {
+      const c = this.mmCtx;
+      c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      c.clearRect(0, 0, size, size);
+      for (let y = 0; y < map.h; y++) {
+        for (let x = 0; x < map.w; x++) {
+          const i = y * map.w + x;
+          const t = map.tiles[i];
+          const seen = map.explored[i];
+          if (t === M.TILE.WALL) {
+            c.fillStyle = seen ? '#3a332b' : 'rgba(66,58,48,0.34)';
+          } else if (t === M.TILE.EXIT) {
+            c.fillStyle = seen ? '#c9a227' : 'rgba(120,96,40,0.4)';
+          } else {
+            c.fillStyle = seen ? '#5f5241' : 'rgba(70,60,48,0.16)';
+          }
+          c.fillRect(x * cell, y * cell, cell + 0.6, cell + 0.6);
+        }
+      }
     },
 
     drawFloor(ctx, map) {
