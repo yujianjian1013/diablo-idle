@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暗黑挂机 · 刷装备</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- 顶栏 -->
+  <header id="topbar">
+    <div class="hero">
+      <div class="avatar">⚔</div>
+      <div class="hero-info">
+        <div class="line1">
+          <span id="heroName">流浪者</span>
+          <span id="heroLevel">Lv.1</span>
+        </div>
+        <div class="expbar"><div id="expFill"></div><span id="expText">0 / 20</span></div>
+      </div>
+    </div>
+    <div class="gold"><span class="icon">◈</span><span id="goldText">0</span></div>
+    <button id="btnSound" class="sound" title="音效开关">音效 开</button>
+  </header>
+
+  <!-- 主区 -->
+  <main>
+    <section id="battlePanel">
+      <canvas id="scene"></canvas>
+      <div id="floorInfo">
+        第 <b id="floorNum">1</b> 层 · <b id="floorName">荒废庭院</b>
+        <span id="floorProgress">0 / 8</span>
+      </div>
+      <div id="bestFloor">最深：第 1 层</div>
+      <div id="banner"></div>
+    </section>
+
+    <aside id="side">
+      <!-- 属性 -->
+      <div class="panel">
+        <div class="panel-title"><span>属 性</span><span id="powerText">战力 0</span></div>
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="btn-row">
+          <button id="btnAutoEquip" class="toggle on">自动装备</button>
+          <button id="btnAutoSell" class="toggle on">自动分解</button>
+        </div>
+        <div class="btn-row">
+          <button id="btnChest" class="primary">开宝箱 · 80</button>
+          <button id="btnSalvage">一键分解</button>
+        </div>
+        <div class="btn-row">
+          <button id="btnReset" class="danger">重置存档</button>
+        </div>
+      </div>
+
+      <!-- 装备 -->
+      <div class="panel">
+        <div class="panel-title"><span>装 备</span><span id="equipScore"></span></div>
+        <div id="equipGrid"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- 底栏 -->
+  <footer>
+    <div class="panel" id="bagPanel">
+      <div class="panel-title"><span>背 包</span><span id="bagCount">0 / 40</span></div>
+      <div class="panel-body" id="bagList"></div>
+    </div>
+    <div class="panel" id="logPanel">
+      <div class="panel-title"><span>战 报</span><span></span></div>
+      <div class="panel-body" id="logList"></div>
+    </div>
+  </footer>
+
+</div>
+
+<div id="tooltip"></div>
+
+<div id="offlineModal">
+  <div class="modal-box">
+    <h2>离线祝福</h2>
+    <div id="offlineRows"></div>
+    <button id="btnOfflineOk">收下</button>
+  </div>
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
