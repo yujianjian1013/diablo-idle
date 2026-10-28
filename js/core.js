@@ -1222,6 +1222,29 @@
     return { count: count, gold: gold };
   }
 
+  /* ---------- 装备强化 ---------- */
+  const ENHANCE_MAX = 15;
+  function enhanceCost(item) {
+    if (!item) return 0;
+    const base = 45 * Math.pow(item.ilvl + 1, 1.35) * Math.pow((item.enhance || 0) + 1, 1.15);
+    return Math.round(base);
+  }
+
+  /** 强化某槽位装备，返回 {ok, cost, enhance} */
+  function enhanceItem(state, slotKey) {
+    const item = state.equip[slotKey];
+    if (!item) return { ok: false, reason: 'empty' };
+    if ((item.enhance || 0) >= ENHANCE_MAX) return { ok: false, reason: 'max' };
+    const cost = enhanceCost(item);
+    if (state.player.gold < cost) return { ok: false, reason: 'gold', cost: cost };
+    state.player.gold -= cost;
+    item.enhance = (item.enhance || 0) + 1;
+    item.score = itemScore(item);
+    state.stats = computeStats(state);
+    state.player.hp = Math.min(state.player.hp, state.stats.hpMax);
+    return { ok: true, cost: cost, enhance: item.enhance };
+  }
+
   function chestPrice(floor) { return Math.round(80 * Math.pow(1.12, floor - 1)); }
 
   function openChest(state) {
@@ -1361,6 +1384,9 @@
     salvageWorse: salvageWorse,
     chestPrice: chestPrice,
     openChest: openChest,
+    enhanceItem: enhanceItem,
+    enhanceCost: enhanceCost,
+    ENHANCE_MAX: ENHANCE_MAX,
     pushLog: pushLog,
     floorName: floorName,
     dist: dist,

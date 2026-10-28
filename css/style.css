@@ -708,3 +708,11 @@ button.skill-btn.passive {
   .class-card { width: 100px; }
   .intro-box, .ach-box { width: 92vw; padding: 16px; }
 }
+/* 装备强化提示 */
+#tooltip .tt-cost {
+  margin-top: 6px;
+  color: #6bd47a;
+  font-size: 11px;
+  border-top: 1px solid #2a2014;
+  padding-top: 5px;
+}

@@ -222,6 +222,23 @@
     });
     grid.addEventListener('mouseleave', UI.hideTooltip);
 
+    // 点击装备格 → 强化
+    grid.addEventListener('click', function (e) {
+      const slotEl = e.target.closest('.slot');
+      if (!slotEl) return;
+      const slotKey = slotEl.dataset.slot;
+      const r = C.enhanceItem(state, slotKey);
+      if (r.ok) {
+        if (window.SOUND) window.SOUND.play('chest');
+        UI.showBanner('强化 +' + r.enhance + ' · -' + UI.fmt(r.cost) + ' 金币');
+        UI.update(state, true);
+      } else if (r.reason === 'gold') {
+        UI.showBanner('金币不足（需要 ' + UI.fmt(r.cost) + '）', true);
+      } else if (r.reason === 'max') {
+        UI.showBanner('已强化到满级', true);
+      }
+    });
+
     const bag = els.bagList;
     bag.addEventListener('mousemove', function (e) {
       const itemEl = e.target.closest('.bag-item');

@@ -1493,6 +1493,12 @@
       (item.enhance ? ' · 强化 +' + item.enhance : '') + '</div>';
     for (const a of item.affixes) html += '<div class="tt-affix">' + affixText(a) + '</div>';
     html += '<div class="tt-score">评分 ' + fmt(item.score) + '</div>';
+    if (item.enhance < C.ENHANCE_MAX) {
+      html += '<div class="tt-cost">点击强化 → +' + ((item.enhance || 0) + 1) +
+        '（' + fmt(C.enhanceCost(item)) + ' 金币）</div>';
+    } else {
+      html += '<div class="tt-cost">已强化至满级 +' + C.ENHANCE_MAX + '</div>';
+    }
     const cur = state.equip[item.slot];
     if (cur && cur !== item) {
       const diff = item.score - cur.score;
