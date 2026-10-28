@@ -833,7 +833,6 @@
     p.gold += gold;
     p.kills += 1;
     gainExp(state, exp, events);
-    p.hp = Math.min(state.stats.hpMax, p.hp + state.stats.hpMax * 0.05);
 
     events.push({ type: 'monsterDied', monster: m, gold: gold, exp: exp });
 
