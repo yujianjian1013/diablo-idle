@@ -66,6 +66,16 @@
 
   const QUALITY_MULT = { normal: 1.0, magic: 1.15, rare: 1.32, legendary: 1.5, unique: 1.75 };
 
+  /* ==================== 主动技能 ==================== */
+  const SKILLS = {
+    whirlwind: { key: '1', name: '旋风斩', cd: 9,  desc: '对 3.6 格内所有敌人造成 260% 伤害' },
+    charge:    { key: '2', name: '冲锋',   cd: 14, desc: '冲向目标并击伤路径上的敌人（180%）' },
+    berserk:   { key: '3', name: '狂暴',   cd: 26, desc: '8 秒内攻速 +80%、攻击力 +35%' },
+  };
+  const BERSERK_DURATION = 8;
+  const BERSERK_ATK_MUL = 1.35;
+  const BERSERK_SPEED_MUL = 1.8;
+
   /* ==================== 装备 ==================== */
   function rollQuality(magicFind) {
     const mf = 1 + (magicFind || 0) / 100;
@@ -205,13 +215,16 @@
       const unlocked = Math.min(DATA.MONSTERS.length, 3 + Math.floor(floor / 4));
       tpl = weightedPick(DATA.MONSTERS.slice(0, unlocked));
     }
-    const hp = monsterHp(floor) * (isBoss ? 9 : 1);
+    // 12% 概率出现精英怪：更硬、更疼、必掉装备
+    const isElite = !isBoss && rng() < 0.12;
+    const hp = monsterHp(floor) * (isBoss ? 9 : 1) * (isElite ? 2.6 : 1);
     return {
       id: _itemId++,
       x: x, y: y,
       hp: Math.round(hp),
       hpMax: Math.round(hp),
-      atk: Math.round(monsterAtk(floor) * (isBoss ? 2.2 : 1) * 10) / 10,
+      atk: Math.round(monsterAtk(floor) * (isBoss ? 2.2 : 1) * (isElite ? 1.3 : 1) * 10) / 10,
+      isElite: isElite,
       name: tpl.name,
       shape: tpl.shape,
       color: tpl.color,
@@ -276,6 +289,8 @@
       boss: null,
       target: null,
       blacklist: {},
+      skills: { whirlwind: 0, charge: 0, berserk: 0 },
+      buffs: { berserk: 0 },
     };
     for (let i = 0; i < map.spawns.length; i++) {
       const sp = map.spawns[i];
@@ -448,10 +463,11 @@
     r.swingY = r.pos.y;
     events.push({ type: 'swing', x: r.pos.x, y: r.pos.y, count: targets.length });
 
+    const atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
     let totalLeech = 0;
     for (let i = 0; i < targets.length; i++) {
       const m = targets[i];
-      const hit = rollDamage(s.atk, s.crit, s.critDmg);
+      const hit = rollDamage(s.atk * atkMul, s.crit, s.critDmg);
       m.hp -= hit.dmg;
       m.hurtT = 0.25;
       totalLeech += hit.dmg;
@@ -477,13 +493,82 @@
 
     events.push({ type: 'monsterDied', monster: m, gold: gold, exp: exp });
 
-    const dropChance = m.isBoss ? 1 : 0.16 + state.stats.magicFind / 1000;
-    const dropCount = m.isBoss ? rndInt(2, 3) : (rng() < dropChance ? 1 : 0);
+    const dropChance = (m.isBoss || m.isElite) ? 1 : 0.16 + state.stats.magicFind / 1000;
+    const dropCount = m.isBoss ? rndInt(2, 3) : (m.isElite ? 1 : (rng() < dropChance ? 1 : 0));
     for (let i = 0; i < dropCount; i++) {
       const item = dropItem(state, p.floor);
       events.push({ type: 'drop', item: item, x: m.x, y: m.y });
       handleDrop(state, item, events);
     }
+  }
+
+  /** 释放主动技能，返回事件数组（失败返回 null 且不进入冷却） */
+  function useSkill(state, key) {
+    const r = state.run;
+    if (!r || !SKILLS[key]) return null;
+    if (r.skills && r.skills[key] > 0) return null;
+
+    const s = state.stats;
+    const p = r.pos;
+    const events = [];
+
+    if (key === 'whirlwind') {
+      const RAD = 3.6;
+      let n = 0;
+      for (let i = 0; i < r.monsters.length; i++) {
+        const m = r.monsters[i];
+        if (!m.alive) continue;
+        if (dist(m, p) > RAD) continue;
+        const hit = rollDamage(s.atk * 2.6, s.crit, s.critDmg);
+        m.hp -= hit.dmg;
+        m.hurtT = 0.25;
+        n++;
+        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
+        if (m.hp <= 0) killMonster(state, m, events);
+      }
+      events.push({ type: 'skill', key: key, x: p.x, y: p.y, radius: RAD, count: n });
+
+    } else if (key === 'charge') {
+      const near = nearestMonster(r, 12, r.blacklist, true);
+      if (!near) return null;
+      const t = near.monster;
+      const dx = t.x - p.x, dy = t.y - p.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const travel = Math.min(4, Math.max(0, d - 1.3));
+      let moved = false;
+      if (travel > 0.2) {
+        const nx = p.x + (dx / d) * travel;
+        const ny = p.y + (dy / d) * travel;
+        if (MAP.isWalkable(r.map, Math.floor(nx), Math.floor(ny))) {
+          p.x = nx;
+          p.y = ny;
+          r.path = [];
+          r.target = t;
+          MAP.reveal(r.map, p.x, p.y, 5);
+          moved = true;
+        }
+      }
+      let n = 0;
+      for (let i = 0; i < r.monsters.length; i++) {
+        const m = r.monsters[i];
+        if (!m.alive) continue;
+        if (dist(m, p) > 2.3) continue;
+        const hit = rollDamage(s.atk * 1.8, s.crit, s.critDmg);
+        m.hp -= hit.dmg;
+        m.hurtT = 0.25;
+        n++;
+        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
+        if (m.hp <= 0) killMonster(state, m, events);
+      }
+      events.push({ type: 'skill', key: key, x: p.x, y: p.y, radius: 2.3, count: n, moved: moved });
+
+    } else if (key === 'berserk') {
+      r.buffs.berserk = BERSERK_DURATION;
+      events.push({ type: 'skill', key: key, x: p.x, y: p.y, duration: BERSERK_DURATION });
+    }
+
+    r.skills[key] = SKILLS[key].cd;
+    return events;
   }
 
   /* ---------- 怪物 AI ---------- */
@@ -578,10 +663,22 @@
     moveAlong(state, dt);
     if (r.swingT > 0) r.swingT = Math.max(0, r.swingT - dt);
 
+    // 技能冷却与 buff
+    if (r.skills) {
+      for (const k in r.skills) if (r.skills[k] > 0) r.skills[k] = Math.max(0, r.skills[k] - dt);
+    } else {
+      r.skills = { whirlwind: 0, charge: 0, berserk: 0 };
+    }
+    if (!r.buffs) r.buffs = { berserk: 0 };
+    if (r.buffs.berserk > 0) r.buffs.berserk = Math.max(0, r.buffs.berserk - dt);
+
     // 玩家攻击
     r.attackCd -= dt;
     if (r.attackCd <= 0 && nearestMonster(r, PLAYER_ATTACK_RANGE)) {
-      if (playerSwing(state, events)) r.attackCd = s.attackInterval;
+      if (playerSwing(state, events)) {
+        const berserk = r.buffs.berserk > 0;
+        r.attackCd = s.attackInterval / (berserk ? BERSERK_SPEED_MUL : 1);
+      }
     }
 
     // 怪物
@@ -750,6 +847,9 @@
     SAVE_KEY: SAVE_KEY,
     BASE: BASE,
     PLAYER_ATTACK_RANGE: PLAYER_ATTACK_RANGE,
+    SKILLS: SKILLS,
+    BERSERK_DURATION: BERSERK_DURATION,
+    useSkill: useSkill,
     setSeed: setSeed,
     rng: rng,
     rnd: rnd,

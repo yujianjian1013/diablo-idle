@@ -61,6 +61,9 @@
     mmLastX: 0, mmLastY: 0,
     mmCanvas: null, mmCtx: null,
     mmW: 158, mmH: 93,
+    mmExpanded: false,
+    mmRect: null,
+    _mmMap: null,
 
     init(canvas) {
       this.canvas = canvas;
@@ -70,6 +73,20 @@
       this.resize();
       window.addEventListener('resize', () => this.resize());
       if (window.ResizeObserver) new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
+
+      // 点击小地图切换展开 / 收起
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const r = this.mmRect;
+        if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+          this.mmExpanded = !this.mmExpanded;
+          this.mmDirty = true;
+        } else if (this.mmExpanded) {
+          this.mmExpanded = false;
+        }
+      });
     },
 
     resize() {
@@ -85,8 +102,8 @@
       this.mmW = Math.round(Math.max(110, Math.min(168, this.W * 0.28)));
       this.mmH = Math.round(this.mmW / 2 + 14);
       if (this.mmCanvas) {
-        this.mmCanvas.width = Math.round(this.mmW * this.dpr);
-        this.mmCanvas.height = Math.round(this.mmH * this.dpr);
+        this.mmCanvas.width = Math.round(512 * this.dpr);
+        this.mmCanvas.height = Math.round(276 * this.dpr);
         this.mmDirty = true;
       }
     },
@@ -152,6 +169,21 @@
           if (ev.x !== undefined) {
             this.addFloat(ev.x, ev.y, '掉落！', qColor(ev.item.quality), 14, 50);
             this.addParts(ev.x, ev.y, qColor(ev.item.quality), 8, 70);
+          }
+          break;
+        case 'skill':
+          if (ev.key === 'whirlwind') {
+            this.ripples.push({ x: ev.x, y: ev.y, t: 0, big: true });
+            this.shake = Math.max(this.shake, 5);
+            this.addFloat(ev.x, ev.y, '旋风斩', '#ffd88a', 20, 70);
+          } else if (ev.key === 'charge') {
+            this.shake = Math.max(this.shake, 6);
+            this.addFloat(ev.x, ev.y, '冲锋', '#8ad4ff', 18, 62);
+          } else if (ev.key === 'berserk') {
+            this.levelGlow = 1;
+            this.flash = 0.7;
+            this.flashColor = '220,90,40';
+            this.addFloat(ev.x, ev.y, '狂暴', '#ff7a3a', 22, 74);
           }
           break;
         case 'floorUp':
@@ -237,7 +269,7 @@
         const r = this.ripples[i];
         const p = this.worldToScreen(r.x, r.y);
         const k = r.t / 0.4;
-        const radius = 20 + k * 60;
+        const radius = r.big ? (30 + k * 130) : (20 + k * 60);
         ctx.strokeStyle = 'rgba(255, 220, 150, ' + (1 - k) * 0.55 + ')';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
@@ -289,62 +321,105 @@
       this.drawMinimap(ctx, map, run);
     },
 
-    /* ---------- 小地图（等距投影，和主画面方位一致） ---------- */
+    /* ---------- 小地图（等距投影，可点击展开） ---------- */
     drawMinimap(ctx, map, run) {
-      const mw = this.mmW, mh = this.mmH;
-      const x0 = this.W - mw - 14;
-      const y0 = 14;
-      const cw = mw / map.w;
+      const MM_CW = 512, MM_CH = 276;   // 离屏画布的固定逻辑尺寸
+      let mw, mh, x0, y0;
+
+      if (this.mmExpanded) {
+        mw = Math.min(this.W * 0.66, 560);
+        mh = mw / 2 + 26;
+        if (mh > this.H * 0.82) { mh = this.H * 0.82; mw = (mh - 26) * 2; }
+        x0 = (this.W - mw) / 2;
+        y0 = (this.H - mh) / 2;
+        // 展开时用暗幕压住后面的战斗画面
+        ctx.fillStyle = 'rgba(0,0,0,0.66)';
+        ctx.fillRect(0, 0, this.W, this.H);
+      } else {
+        mw = this.mmW; mh = this.mmH;
+        x0 = this.W - mw - 14;
+        y0 = 14;
+      }
+      this.mmRect = { x: x0, y: y0, w: mw, h: mh };
+
+      const cw = MM_CW / map.w;
       const ch = cw / 2;
       const cyc = (map.w + map.h - 2) / 2;
 
-      if (this.mmDirty) {
-        this.rebuildMinimap(map, mw, mh, cw, ch, cyc);
+      if (this.mmDirty || this._mmMap !== map) {
+        this._mmMap = map;
+        this.rebuildMinimap(map, MM_CW, MM_CH, cw, ch, cyc);
         this.mmDirty = false;
       }
 
       ctx.save();
-      // 底板
-      ctx.fillStyle = 'rgba(10,8,6,0.84)';
+      ctx.fillStyle = 'rgba(10,8,6,0.86)';
       ctx.fillRect(x0 - 1, y0 - 1, mw + 2, mh + 2);
       ctx.drawImage(this.mmCanvas, x0, y0, mw, mh);
 
-      const toX = function (gx, gy) { return x0 + mw / 2 + (gx - gy) * cw / 2; };
-      const toY = function (gx, gy) { return y0 + mh / 2 + (gx + gy - cyc) * ch / 2; };
+      // 统一换算：离屏坐标 → 屏幕坐标
+      const sx = mw / MM_CW, sy = mh / MM_CH;
+      const toX = function (gx, gy) { return x0 + (MM_CW / 2 + (gx - gy) * cw / 2) * sx; };
+      const toY = function (gx, gy) { return y0 + (MM_CH / 2 + (gx + gy - cyc) * ch / 2) * sy; };
+      const dot = this.mmExpanded ? 1.7 : 1;
 
-      // 怪物点（只画已探索区域）
+      // 怪物点
       for (let i = 0; i < run.monsters.length; i++) {
         const m = run.monsters[i];
         if (!m.alive) continue;
         const ti = Math.floor(m.y) * map.w + Math.floor(m.x);
-        if (!map.explored[ti]) continue;
-        ctx.fillStyle = m.isBoss ? '#ff5a2a' : '#d24a4a';
+        if (!this.mmExpanded && !map.explored[ti]) continue;
+        ctx.fillStyle = m.isBoss ? '#ff5a2a' : (m.isElite ? '#e8c04a' : '#d24a4a');
         ctx.beginPath();
-        ctx.arc(toX(m.x, m.y), toY(m.x, m.y), m.isBoss ? 3.2 : 1.9, 0, Math.PI * 2);
+        ctx.arc(toX(m.x, m.y), toY(m.x, m.y), (m.isBoss ? 3.2 : (m.isElite ? 2.5 : 1.9)) * dot, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // 玩家（呼吸光点）
+      // 玩家
       const px = toX(run.pos.x, run.pos.y);
       const py = toY(run.pos.x, run.pos.y);
       const pulse = 0.65 + Math.sin(this.t * 4) * 0.35;
       ctx.fillStyle = 'rgba(255, 214, 90, ' + (0.32 * pulse) + ')';
       ctx.beginPath();
-      ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.arc(px, py, 7 * dot, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffd750';
       ctx.beginPath();
-      ctx.arc(px, py, 2.8, 0, Math.PI * 2);
+      ctx.arc(px, py, 2.8 * dot, 0, Math.PI * 2);
       ctx.fill();
 
-      // 边框 + 标题
+      // 边框
       ctx.strokeStyle = 'rgba(140,116,80,0.6)';
       ctx.lineWidth = 1;
       ctx.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
+
+      // 标题 / 图例 / 提示
       ctx.font = '10px "Songti SC", Georgia, serif';
       ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(150,130,100,0.85)';
-      ctx.fillText('地牢地图', x0 + 2, y0 - 4);
+      ctx.fillText(this.mmExpanded ? '地牢地图（点击关闭）' : '地牢地图（点击展开）', x0 + 2, y0 - 5);
+
+      if (this.mmExpanded) {
+        const ly = y0 + mh + 16;
+        ctx.font = '12px "Songti SC", Georgia, serif';
+        const items = [
+          ['#ffd750', '你'],
+          ['#d24a4a', '怪物'],
+          ['#e8c04a', '精英'],
+          ['#ff5a2a', 'BOSS'],
+          ['#c9a227', '出口'],
+        ];
+        let lx = x0 + 10;
+        for (let i = 0; i < items.length; i++) {
+          ctx.fillStyle = items[i][0];
+          ctx.beginPath();
+          ctx.arc(lx + 4, ly - 4, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(180,160,130,0.9)';
+          ctx.fillText(items[i][1], lx + 12, ly);
+          lx += ctx.measureText(items[i][1]).width + 34;
+        }
+      }
       ctx.restore();
     },
 
@@ -361,10 +436,10 @@
           const cx = mw / 2 + (x - y) * cw / 2;
           const cy = mh / 2 + (x + y - cyc) * ch / 2;
           c.beginPath();
-          c.moveTo(cx, cy - ch / 2 - 0.15);
-          c.lineTo(cx + cw / 2 + 0.25, cy);
-          c.lineTo(cx, cy + ch / 2 + 0.15);
-          c.lineTo(cx - cw / 2 - 0.25, cy);
+          c.moveTo(cx, cy - ch / 2 - 0.3);
+          c.lineTo(cx + cw / 2 + 0.4, cy);
+          c.lineTo(cx, cy + ch / 2 + 0.3);
+          c.lineTo(cx - cw / 2 - 0.4, cy);
           c.closePath();
           if (t === M.TILE.WALL) c.fillStyle = seen ? '#3a332b' : 'rgba(66,58,48,0.34)';
           else if (t === M.TILE.EXIT) c.fillStyle = seen ? '#c9a227' : 'rgba(120,96,40,0.4)';
@@ -751,6 +826,19 @@
         ctx.restore();
       }
 
+      // 精英怪金色光环
+      if (m.isElite && !ghost) {
+        const pp = 0.45 + Math.sin(this.t * 3.4 + m.id) * 0.3;
+        ctx.save();
+        ctx.globalAlpha = pp;
+        ctx.strokeStyle = '#e8c04a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 2, 19 * sc, 8.5 * sc, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       ctx.save();
       ctx.translate(x, y + bob);
       ctx.scale(sc, sc);
@@ -949,13 +1037,13 @@
         const ratio = Math.max(0, m.hp / m.hpMax);
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(x - bw / 2 - 1, by - 1, bw + 2, bh + 2);
-        ctx.fillStyle = boss ? '#d63a1a' : '#b01c1c';
+        ctx.fillStyle = boss ? '#d63a1a' : (m.isElite ? '#c9a227' : '#b01c1c');
         ctx.fillRect(x - bw / 2, by, bw * ratio, bh);
-        if (boss) {
+        if (boss || m.isElite) {
           ctx.font = '11px "Songti SC", Georgia, serif';
           ctx.textAlign = 'center';
-          ctx.fillStyle = '#ffb060';
-          ctx.fillText(m.name, x, by - 6);
+          ctx.fillStyle = boss ? '#ffb060' : '#e8c04a';
+          ctx.fillText(m.name + (m.isElite ? ' · 精英' : ''), x, by - 6);
         }
       }
     },
@@ -992,6 +1080,9 @@
     els.btnAutoSell = $('btnAutoSell');
     els.btnSalvage = $('btnSalvage');
     els.btnReset = $('btnReset');
+    els.btnSkill1 = $('btnSkill1');
+    els.btnSkill2 = $('btnSkill2');
+    els.btnSkill3 = $('btnSkill3');
     tooltipEl = $('tooltip');
     Scene.init($('scene'));
   }
@@ -1087,6 +1178,28 @@
     els.btnChest.disabled = p.gold < price;
   }
 
+  function renderSkills(state) {
+    if (!els.btnSkill1) return;
+    const r = state.run;
+    const list = [['whirlwind', els.btnSkill1], ['charge', els.btnSkill2], ['berserk', els.btnSkill3]];
+    for (let i = 0; i < list.length; i++) {
+      const key = list[i][0];
+      const btn = list[i][1];
+      const def = C.SKILLS[key];
+      if (!def || !btn) continue;
+      const cd = (r && r.skills && r.skills[key]) || 0;
+      if (cd > 0.05) {
+        btn.textContent = def.name + ' ' + Math.ceil(cd);
+        btn.className = 'skill-btn cooling';
+        btn.disabled = true;
+      } else {
+        btn.textContent = def.name;
+        btn.className = 'skill-btn ready';
+        btn.disabled = false;
+      }
+    }
+  }
+
   let bannerTimer = null;
   function showBanner(text, sub) {
     els.banner.textContent = text;
@@ -1129,6 +1242,7 @@
   function update(state, force) {
     if (force) dirty = true;
     renderTop(state);
+    renderSkills(state);
     if (dirty) {
       renderStats(state);
       renderEquip(state);

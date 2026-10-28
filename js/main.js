@@ -41,6 +41,9 @@
         UI.showBanner('你被击倒', true);
         if (S) S.play('death');
         break;
+      case 'skill':
+        if (S) S.play(ev.key === 'berserk' ? 'boss' : 'crit');
+        break;
       case 'equip':
       case 'drop':
         if (S) S.play('drop');
@@ -211,6 +214,18 @@
       }
     });
 
+    // 主动技能
+    function castSkill(key) {
+      const evs = C.useSkill(state, key);
+      if (!evs) return;
+      for (const ev of evs) handleEvent(ev);
+      UI.markDirty();
+      UI.update(state, true);
+    }
+    if (els.btnSkill1) els.btnSkill1.onclick = function () { castSkill('whirlwind'); };
+    if (els.btnSkill2) els.btnSkill2.onclick = function () { castSkill('charge'); };
+    if (els.btnSkill3) els.btnSkill3.onclick = function () { castSkill('berserk'); };
+
     // 音效开关
     const btnSound = document.getElementById('btnSound');
     if (window.SOUND) window.SOUND.setEnabled(true);
@@ -231,6 +246,9 @@
     window.addEventListener('keydown', function (e) {
       if (e.key === 'b' || e.key === 'B') els.btnChest.click();
       if (e.key === 's' || e.key === 'S') els.btnSalvage.click();
+      if (e.key === '1') castSkill('whirlwind');
+      if (e.key === '2') castSkill('charge');
+      if (e.key === '3') castSkill('berserk');
     });
 
     // 页面关闭前存盘

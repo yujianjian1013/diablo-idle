@@ -109,6 +109,33 @@ for (let i = 0; i < 5; i++) st4.bag.push(CORE.createItem('weapon', 1, 'normal'))
 const r = CORE.salvageWorse(st4);
 ok(r.count === 5, '5 件低级武器应全被分解，实际 ' + r.count);
 
+/* ---------- 6. 主动技能 ---------- */
+section('主动技能');
+CORE.setSeed(999);
+const sk = CORE.createState();
+for (let i = 0; i < 60; i++) CORE.tick(sk, 0.1);   // 先打一会儿，靠近怪
+const skEvs = CORE.useSkill(sk, 'whirlwind');
+ok(skEvs !== null, '旋风斩应能释放（附近有怪或至少产生事件）');
+ok(sk.run.skills.whirlwind > 0, '旋风斩应进入冷却');
+ok(CORE.useSkill(sk, 'whirlwind') === null, '冷却中不能再次释放');
+const berserkEvs = CORE.useSkill(sk, 'berserk');
+ok(berserkEvs !== null, '狂暴应能释放');
+ok(sk.run.buffs.berserk > 0, '狂暴 buff 应生效');
+console.log('  旋风斩事件数:', skEvs ? skEvs.length : 0, '| 狂暴 buff 剩余:', sk.run.buffs.berserk.toFixed(1) + 's');
+
+/* ---------- 7. 精英怪 ---------- */
+section('精英怪');
+CORE.setSeed(321);
+let elites = 0;
+const N = 300;
+for (let i = 0; i < N; i++) {
+  const m = CORE.createMonster(3, 0, 0, false);
+  if (m.isElite) elites++;
+}
+const eliteRate = elites / N * 100;
+console.log('  精英比例: ' + eliteRate.toFixed(1) + '%');
+ok(eliteRate > 5 && eliteRate < 25, '精英比例应在 5%~25%，实际 ' + eliteRate.toFixed(1) + '%');
+
 /* ---------- 结果 ---------- */
 console.log('\n================================');
 console.log(`测试结果: ${pass} 通过, ${fail} 失败`);
