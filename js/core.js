@@ -124,7 +124,8 @@
     const q = DATA.QUALITY[qKey];
     const qMult = QUALITY_MULT[qKey] || 1;
     const count = rndInt(q.affixes[0], q.affixes[1]);
-    const pool = DATA.AFFIX_KEYS.slice();
+    const slotPool = DATA.SLOT_AFFIX_POOL[slotKey] || DATA.AFFIX_KEYS;
+    const pool = slotPool.slice();
     const affixes = [];
     for (let i = 0; i < count && pool.length; i++) {
       const weighted = pool.map(function (k) { return { key: k, weight: DATA.AFFIXES[k].weight }; });

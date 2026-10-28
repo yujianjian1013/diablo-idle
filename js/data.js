@@ -289,6 +289,19 @@
     { key: 'unique1',    name: '暗金收藏家', desc: '获得 1 件暗金装备', type: 'unique', value: 1,  reward: { mfPct: 5 } },
     { key: 'item200',    name: '装备达人', desc: '累计拾取 200 件装备', type: 'items', value: 200,  reward: { mfPct: 5 } },
   ];
+
+  /* ---------------- 部位专属词条池 ---------------- */
+  // 每件装备只从对应部位的池子里抽词条，避免"所有装备都一样"
+  const SLOT_AFFIX_POOL = {
+    weapon: ['atk', 'crit', 'critDmg', 'atkSpeed', 'lifesteal', 'splash'],
+    helmet: ['hp', 'def', 'crit', 'magicFind'],
+    armor:  ['hp', 'def', 'magicFind'],
+    gloves: ['atk', 'atkSpeed', 'crit', 'critDmg', 'splash'],
+    boots:  ['hp', 'def', 'splashRadius', 'goldFind'],
+    amulet: ['crit', 'critDmg', 'goldFind', 'magicFind', 'splash'],
+    ring1:  ['atk', 'crit', 'splash', 'splashRadius', 'goldFind', 'magicFind', 'lifesteal'],
+    ring2:  ['atk', 'crit', 'splash', 'splashRadius', 'goldFind', 'magicFind', 'lifesteal'],
+  };
   const DATA = {
     QUALITY: QUALITY,
     QUALITY_ORDER: QUALITY_ORDER,
@@ -308,6 +321,7 @@
     PASSIVE_MAX_LEVEL: PASSIVE_MAX_LEVEL,
     STAT_COEF: STAT_COEF,
     ACHIEVEMENTS: ACHIEVEMENTS,
+    SLOT_AFFIX_POOL: SLOT_AFFIX_POOL,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DATA;
