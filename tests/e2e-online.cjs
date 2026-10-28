@@ -1,0 +1,30 @@
+const path = require('path');
+const PW = 'C:/Users/12451/AppData/Local/npm-cache/_npx/4fb06fbc413e8b48/node_modules/playwright';
+const { chromium } = require(PW);
+(async () => {
+  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const errors = [];
+  page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto('https://yujianjian1013.github.io/diablo-idle/', { waitUntil: 'networkidle', timeout: 30000 });
+  await page.waitForTimeout(2000);
+  const home = await page.locator('#homeScreen.show').count();
+  console.log('在线首页显示:', home > 0 ? 'PASS' : 'FAIL');
+  await page.locator('#btnNewGame').click();
+  await page.waitForTimeout(500);
+  console.log('在线职业卡:', await page.locator('.class-card').count());
+  await page.locator('.class-card.available').first().click();
+  await page.waitForTimeout(2000);
+  const intro = await page.locator('#introModal.show').count();
+  if (intro) await page.locator('#btnIntroOk').click();
+  await page.waitForTimeout(6000);
+  const st = await page.evaluate(() => {
+    const s = window.__game && window.__game.state;
+    return s ? { cls: s.player.cls, lv: s.player.level, kills: s.player.kills } : null;
+  });
+  console.log('在线游玩:', JSON.stringify(st));
+  await page.screenshot({ path: 'E:/AI/diablo-idle/preview-online.png' });
+  console.log('控制台错误:', errors.length ? errors : '无');
+  await browser.close();
+})().catch(e => { console.error(e); process.exit(1); });
