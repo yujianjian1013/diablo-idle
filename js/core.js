@@ -296,7 +296,7 @@
     if (isBoss) {
       tpl = DATA.BOSSES[(floor - 1) % DATA.BOSSES.length] || DATA.BOSSES[0];
     } else {
-      const unlocked = Math.min(DATA.MONSTERS.length, 3 + Math.floor(floor / 4));
+      const unlocked = Math.min(DATA.MONSTERS.length, 4 + Math.floor(floor / 5));
       tpl = weightedPick(DATA.MONSTERS.slice(0, unlocked));
     }
     // 12% 概率出现精英怪：更硬、更疼、必掉装备
