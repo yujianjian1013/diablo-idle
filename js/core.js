@@ -626,7 +626,9 @@
     }
 
     if (s.lifesteal > 0 && totalLeech > 0) {
-      state.player.hp = Math.min(s.hpMax, state.player.hp + totalLeech * s.lifesteal / 100);
+      const heal = totalLeech * s.lifesteal / 100;
+      state.player.hp = Math.min(s.hpMax, state.player.hp + heal);
+      if (heal >= 1) events.push({ type: 'heal', amount: Math.round(heal) });
     }
     return true;
   }

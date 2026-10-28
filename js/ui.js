@@ -56,6 +56,7 @@
     flashColor: '255,220,140',
     hurtFlash: 0,
     playerHurtT: 0,
+    healFlash: 0,
     levelGlow: 0,
     swingT: 0,
     _px: 0, _py: 0,
@@ -189,6 +190,10 @@
         case 'dodge':
           this.addFloat(this._px, this._py, '闪避', '#7ae0d0', 16, 50);
           break;
+        case 'heal':
+          this.healFlash = 1;
+          this.addFloat(this._px, this._py, '+' + fmt(ev.amount), '#5ad47a', 14, 40);
+          break;
         case 'levelUp':
           this.levelGlow = 1;
           this.addFloat(this._px, this._py, 'LEVEL UP', '#7ae08a', 22, 80);
@@ -237,6 +242,7 @@
       this.flash = Math.max(0, this.flash - dt * 1.6);
       this.hurtFlash = Math.max(0, this.hurtFlash - dt * 3);
       this.playerHurtT = Math.max(0, this.playerHurtT - dt * 2.2);
+      this.healFlash = Math.max(0, this.healFlash - dt * 2.5);
       this.levelGlow = Math.max(0, this.levelGlow - dt * 1.4);
       this.swingT = Math.max(0, this.swingT - dt * 3);
 
@@ -420,6 +426,11 @@
         }
         ctx.fillStyle = hpGrad;
         ctx.fillRect(bx, by, bw * hpRatio, bh);
+        // 回复时血条闪绿
+        if (this.healFlash > 0) {
+          ctx.fillStyle = 'rgba(106, 212, 122, ' + (this.healFlash * 0.45) + ')';
+          ctx.fillRect(bx, by, bw * hpRatio, bh);
+        }
         ctx.strokeStyle = 'rgba(150,120,85,0.55)';
         ctx.lineWidth = 1;
         ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
