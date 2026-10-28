@@ -60,8 +60,8 @@
   function expToNext(level) { return Math.floor(20 * Math.pow(1.30, level - 1)); }
   function playerBaseAtk(level) { return BASE.atk + (level - 1) * 2.6; }
   function playerBaseHp(level) { return BASE.hp + (level - 1) * 20; }
-  function monsterHp(floor) { return 27.5 * Math.pow(1.16, floor - 1); }
-  function monsterAtk(floor) { return 1.4 * Math.pow(1.125, floor - 1); }
+  function monsterHp(floor) { return 105 * Math.pow(1.158, floor - 1); }
+  function monsterAtk(floor) { return 7 * Math.pow(1.132, floor - 1); }
   function monsterExp(floor) { return 9 * Math.pow(1.15, floor - 1); }
   function monsterGold(floor) { return 2.2 * Math.pow(1.14, floor - 1); }
 
