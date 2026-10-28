@@ -74,15 +74,16 @@
 
   /* ---------------- 怪物 ---------------- */
   // shape 交给渲染层决定画法
+  // ranged: 远程怪，保持在 range 外射击；近战怪必须贴脸
   const MONSTERS = [
-    { name: '腐尸',     shape: 'slime',    color: '#6b7a45', weight: 12 },
-    { name: '骷髅战士', shape: 'skeleton', color: '#cfc7ad', weight: 12 },
-    { name: '地狱犬',   shape: 'beast',    color: '#8a3324', weight: 11 },
-    { name: '堕落法师', shape: 'mage',     color: '#6a4a8a', weight: 10 },
-    { name: '食尸鬼',   shape: 'slime',    color: '#7a6a55', weight: 10 },
-    { name: '石像鬼',   shape: 'beast',    color: '#767676', weight: 9 },
-    { name: '血族贵胄', shape: 'mage',     color: '#9a1a2e', weight: 8 },
-    { name: '深渊魔像', shape: 'golem',    color: '#4a3a3a', weight: 7 },
+    { name: '腐尸',     shape: 'slime',    color: '#6b7a45', weight: 12, ranged: false },
+    { name: '骷髅战士', shape: 'skeleton', color: '#cfc7ad', weight: 12, ranged: false },
+    { name: '地狱犬',   shape: 'beast',    color: '#8a3324', weight: 11, ranged: false },
+    { name: '堕落法师', shape: 'mage',     color: '#6a4a8a', weight: 8, ranged: true, range: 5.5 },
+    { name: '食尸鬼',   shape: 'slime',    color: '#7a6a55', weight: 10, ranged: false },
+    { name: '石像鬼',   shape: 'beast',    color: '#767676', weight: 9,  ranged: false },
+    { name: '血族贵胄', shape: 'mage',     color: '#9a1a2e', weight: 7, ranged: true, range: 6.0 },
+    { name: '深渊魔像', shape: 'golem',    color: '#4a3a3a', weight: 7,  ranged: false },
   ];
 
   const BOSSES = [

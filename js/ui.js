@@ -168,6 +168,15 @@
           this.addParts(ev.monster.x, ev.monster.y, ev.monster.color, 16, 140);
           this.addFloat(ev.monster.x, ev.monster.y, '+' + fmt(ev.gold) + ' 金币', '#e8c04a', 14, 56);
           break;
+        case 'monsterShot':
+          if (ev.from) {
+            this.projectiles.push({
+              x1: ev.from.x, y1: ev.from.y,
+              x2: this._px, y2: this._py,
+              t: 0, enemy: true,
+            });
+          }
+          break;
         case 'playerHurt':
           this.hurtFlash = 1;
           this.shake = Math.max(this.shake, 4);
@@ -321,10 +330,15 @@
         ctx.save();
         ctx.translate(a.x, a.y - 20);
         ctx.rotate(ang);
-        // 拖尾
+        // 拖尾（敌方暗紫色）
         const tail = ctx.createLinearGradient(-38 * size, 0, 8 * size, 0);
-        tail.addColorStop(0, 'rgba(255,220,140,0)');
-        tail.addColorStop(1, 'rgba(255,235,180,0.9)');
+        if (pr.enemy) {
+          tail.addColorStop(0, 'rgba(150,90,220,0)');
+          tail.addColorStop(1, 'rgba(190,130,255,0.9)');
+        } else {
+          tail.addColorStop(0, 'rgba(255,220,140,0)');
+          tail.addColorStop(1, 'rgba(255,235,180,0.9)');
+        }
         ctx.strokeStyle = tail;
         ctx.lineWidth = 3.2 * size;
         ctx.lineCap = 'round';
@@ -333,9 +347,9 @@
         ctx.lineTo(8 * size, 0);
         ctx.stroke();
         // 箭头
-        ctx.shadowColor = '#ffd77a';
+        ctx.shadowColor = pr.enemy ? '#b47aff' : '#ffd77a';
         ctx.shadowBlur = 8;
-        ctx.fillStyle = '#fff6d8';
+        ctx.fillStyle = pr.enemy ? '#e8d0ff' : '#fff6d8';
         ctx.beginPath();
         ctx.moveTo(12 * size, 0);
         ctx.lineTo(4 * size, -4 * size);

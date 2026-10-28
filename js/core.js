@@ -312,6 +312,8 @@
       name: tpl.name,
       shape: tpl.shape,
       color: tpl.color,
+      ranged: !!tpl.ranged,
+      range: tpl.range || 5,
       isBoss: !!isBoss,
       alive: true,
       atkCd: rnd(0.6, 1.6),
@@ -871,6 +873,21 @@
     }
   }
 
+  /** 远程怪被贴脸时后撤 */
+  function retreatMonster(state, m, dt) {
+    const r = state.run;
+    const dx = m.x - r.pos.x;
+    const dy = m.y - r.pos.y;
+    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+    const step = MONSTER_SPEED * 0.9 * dt;
+    const nx = m.x + (dx / d) * step;
+    const ny = m.y + (dy / d) * step;
+    if (MAP.isWalkable(r.map, Math.floor(nx), Math.floor(ny))) {
+      m.x = nx;
+      m.y = ny;
+    }
+  }
+
   function monsterAttack(state, m, events) {
     const s = state.stats;
     // 闪避（游侠被动）
@@ -885,6 +902,9 @@
     state.player.hp -= dmg;
     state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + RAGE_ON_HURT);
     m.attackAnim = 0.3;
+    if (m.ranged) {
+      events.push({ type: 'monsterShot', from: m, dmg: dmg });
+    }
     events.push({ type: 'playerHurt', dmg: dmg, source: m });
   }
 
@@ -990,9 +1010,16 @@
       }
 
       const d = dist(m, r.pos);
-      if (d > MONSTER_AGGRO_RANGE) continue;
+      if (d > MONSTER_AGGRO_RANGE && !m.ranged) continue;
 
-      if (d > MONSTER_ATTACK_RANGE) {
+      const mRange = m.ranged ? (m.range || 5) : MONSTER_ATTACK_RANGE;
+      const mMin = m.ranged ? 2.2 : 0;
+
+      if (m.ranged && d < mMin) {
+        // 远程怪被贴脸：后撤
+        retreatMonster(state, m, dt);
+      } else if (d > mRange) {
+        if (d > MONSTER_AGGRO_RANGE) continue;
         moveMonster(state, m, dt);
       } else {
         m.path = [];
