@@ -55,6 +55,7 @@
     flash: 0,
     flashColor: '255,220,140',
     hurtFlash: 0,
+    playerHurtT: 0,
     levelGlow: 0,
     swingT: 0,
     _px: 0, _py: 0,
@@ -179,8 +180,14 @@
           break;
         case 'playerHurt':
           this.hurtFlash = 1;
-          this.shake = Math.max(this.shake, 4);
-          if (ev.source) this.addFloat(ev.source.x, ev.source.y, '-' + fmt(ev.dmg), '#ff6b6b', 14, 40);
+          this.playerHurtT = 1;
+          this.shake = Math.max(this.shake, 5);
+          // 伤害数字打在玩家头上
+          this.addFloat(this._px, this._py, '-' + fmt(ev.dmg), '#ff5252', 18, 52);
+          this.addParts(this._px, this._py, '#a01818', 6, 90);
+          break;
+        case 'dodge':
+          this.addFloat(this._px, this._py, '闪避', '#7ae0d0', 16, 50);
           break;
         case 'levelUp':
           this.levelGlow = 1;
@@ -229,6 +236,7 @@
       this.shake *= Math.pow(0.0015, dt);
       this.flash = Math.max(0, this.flash - dt * 1.6);
       this.hurtFlash = Math.max(0, this.hurtFlash - dt * 3);
+      this.playerHurtT = Math.max(0, this.playerHurtT - dt * 2.2);
       this.levelGlow = Math.max(0, this.levelGlow - dt * 1.4);
       this.swingT = Math.max(0, this.swingT - dt * 3);
 
@@ -377,13 +385,48 @@
         ctx.fillStyle = 'rgba(110, 220, 130, ' + (this.levelGlow * 0.14) + ')';
         ctx.fillRect(0, 0, W, H);
       }
-      if (this.hurtFlash > 0.55) {
-        ctx.fillStyle = 'rgba(170, 20, 20, ' + ((this.hurtFlash - 0.55) * 0.55) + ')';
+      if (this.hurtFlash > 0) {
+        // 受击瞬间整屏泛红，然后快速衰减
+        ctx.fillStyle = 'rgba(190, 24, 24, ' + (this.hurtFlash * 0.14) + ')';
+        ctx.fillRect(0, 0, W, H);
+        // 四周更浓的红色晕影
+        const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.7);
+        vg.addColorStop(0, 'rgba(180,0,0,0)');
+        vg.addColorStop(1, 'rgba(180,0,0,' + (this.hurtFlash * 0.32) + ')');
+        ctx.fillStyle = vg;
         ctx.fillRect(0, 0, W, H);
       }
       if (this.flash > 0) {
         ctx.fillStyle = 'rgba(' + this.flashColor + ',' + (this.flash * 0.35) + ')';
         ctx.fillRect(0, 0, W, H);
+      }
+
+      // 玩家血条（屏幕底部）
+      if (state.stats) {
+        const hpRatio = Math.max(0, Math.min(1, state.player.hp / state.stats.hpMax));
+        const bw = Math.min(340, W * 0.42), bh = 14;
+        const bx = W / 2 - bw / 2, by = H - 32;
+        ctx.fillStyle = 'rgba(0,0,0,0.72)';
+        ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+        ctx.fillStyle = '#1a0707';
+        ctx.fillRect(bx, by, bw, bh);
+        const hpGrad = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+        if (hpRatio > 0.35) {
+          hpGrad.addColorStop(0, '#8a1010');
+          hpGrad.addColorStop(1, '#d63a3a');
+        } else {
+          hpGrad.addColorStop(0, '#c02020');
+          hpGrad.addColorStop(1, '#ff5050');
+        }
+        ctx.fillStyle = hpGrad;
+        ctx.fillRect(bx, by, bw * hpRatio, bh);
+        ctx.strokeStyle = 'rgba(150,120,85,0.55)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+        ctx.font = '11px "Songti SC", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#f0e4d0';
+        ctx.fillText(Math.ceil(state.player.hp) + ' / ' + Math.round(state.stats.hpMax), W / 2, by + 11);
       }
 
       const g = ctx.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.8);
@@ -842,6 +885,17 @@
       ctx.fill();
       ctx.fillStyle = '#ffb347';
       ctx.fillRect(px + 1, y - 36 + bob, 1.8, 1.5);
+
+      // 受击时角色整体泛红
+      if (this.playerHurtT > 0) {
+        ctx.save();
+        ctx.globalAlpha = this.playerHurtT * 0.5;
+        ctx.fillStyle = '#ff3a3a';
+        ctx.beginPath();
+        ctx.ellipse(px, y - 26, 20, 32, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       if (this._cls === 'ranger') {
         // 游侠：拉弓
