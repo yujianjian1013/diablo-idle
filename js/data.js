@@ -103,6 +103,99 @@
     '烈焰裂谷', '哀嚎深渊', '亡者大厅', '虚空回廊', '末日王座',
   ];
 
+
+  /* ---------------- 职业 ---------------- */
+  const CLASSES = {
+    warrior: {
+      key: 'warrior',
+      name: '战士',
+      desc: '以怒气为资源，近战高血，擅长范围清场与正面硬刚。',
+      mainStat: 'str',
+      resource: 'rage',
+      base: { str: 18, agi: 12, vit: 16, int: 6 },
+      growth: { str: 2.8, agi: 1.2, vit: 1.8, int: 1.0 },
+      atkCoef: 2.0,
+      skillPool: [
+        'heroicStrike', 'whirlwind', 'charge', 'thunderClap', 'mortalStrike', 'recklessness',
+        'secondWind', 'splatter', 'brutalCrit', 'bloodthirst',
+      ],
+      defaultSkills: ['whirlwind', 'thunderClap', 'recklessness', 'splatter', 'brutalCrit'],
+    },
+  };
+
+  /* ---------------- 技能 ---------------- */
+  // type: active / passive
+  // 主动技能：cost 为资源消耗，cd 为冷却（秒，0 表示无 CD）
+  // 被动技能：效果数值按等级线性成长，见 PASSIVE_GROWTH
+  const SKILLS = {
+    heroicStrike: {
+      key: 'heroicStrike', name: '英勇打击', type: 'active',
+      cost: 15, cd: 0, range: 'single', dmg: 1.5,
+      desc: '对主目标造成 150% 伤害',
+    },
+    whirlwind: {
+      key: 'whirlwind', name: '旋风斩', type: 'active',
+      cost: 25, cd: 0, range: 'aoe', radius: 3.6, dmg: 2.6,
+      desc: '对周围 3.6 格内所有敌人造成 260% 伤害',
+    },
+    charge: {
+      key: 'charge', name: '冲锋', type: 'active',
+      cost: 20, cd: 0, range: 'charge', radius: 2.3, dmg: 1.8,
+      desc: '冲向目标，落地对 2.3 格内敌人造成 180% 伤害',
+    },
+    thunderClap: {
+      key: 'thunderClap', name: '雷霆一击', type: 'active',
+      cost: 30, cd: 0, range: 'aoe', radius: 2.8, dmg: 1.2, slow: 5,
+      desc: '对周围 2.8 格内敌人造成 120% 伤害并减速 5 秒',
+    },
+    mortalStrike: {
+      key: 'mortalStrike', name: '致死打击', type: 'active',
+      cost: 35, cd: 0, range: 'single', dmg: 2.0,
+      dot: { ratio: 0.6, dur: 5 },
+      desc: '对主目标造成 200% 伤害，并附加 5 秒重伤',
+    },
+    recklessness: {
+      key: 'recklessness', name: '狂暴', type: 'active',
+      cost: 40, cd: 26, range: 'buff',
+      desc: '8 秒内攻击速度 +80%、攻击力 +35%',
+    },
+
+    secondWind: {
+      key: 'secondWind', name: '二次打击', type: 'passive',
+      desc: '普通攻击有几率追加一次 50% 伤害的攻击',
+    },
+    splatter: {
+      key: 'splatter', name: '溅射', type: 'passive',
+      desc: '攻击附带溅射伤害',
+    },
+    brutalCrit: {
+      key: 'brutalCrit', name: '暴击', type: 'passive',
+      desc: '提升暴击率与暴击伤害',
+    },
+    bloodthirst: {
+      key: 'bloodthirst', name: '吸血', type: 'passive',
+      desc: '攻击时按伤害回复生命',
+    },
+  };
+
+  // 被动按 1 级 → 50 级线性插值
+  const PASSIVE_GROWTH = {
+    secondWind: { chance: [15, 40], dmg: [0.5, 0.75] },
+    splatter: { splash: [20, 40] },
+    brutalCrit: { crit: [3, 13], critDmg: [15, 35] },
+    bloodthirst: { lifesteal: [3, 15] },
+  };
+  const PASSIVE_MAX_LEVEL = 50;
+
+  /* ---------------- 职业属性系数 ---------------- */
+  const STAT_COEF = {
+    str: { atkPerPoint: 1.5 },
+    agi: { armorPerPoint: 0.2, atkSpeedPerPoint: 0.1 },
+    vit: { hpPerPoint: 8 },
+    int: { mpPerPoint: 4, mpRegenPerPoint: 0.05, skillEffectPerPoint: 0.2 },
+  };
+
+  const CLASS_KEYS = Object.keys(CLASSES);
   const DATA = {
     QUALITY: QUALITY,
     QUALITY_ORDER: QUALITY_ORDER,
@@ -115,6 +208,12 @@
     MONSTERS: MONSTERS,
     BOSSES: BOSSES,
     FLOOR_NAMES: FLOOR_NAMES,
+    CLASSES: CLASSES,
+    CLASS_KEYS: CLASS_KEYS,
+    SKILLS: SKILLS,
+    PASSIVE_GROWTH: PASSIVE_GROWTH,
+    PASSIVE_MAX_LEVEL: PASSIVE_MAX_LEVEL,
+    STAT_COEF: STAT_COEF,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DATA;

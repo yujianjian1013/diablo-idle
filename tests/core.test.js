@@ -109,16 +109,34 @@ for (let i = 0; i < 5; i++) st4.bag.push(CORE.createItem('weapon', 1, 'normal'))
 const r = CORE.salvageWorse(st4);
 ok(r.count === 5, '5 件低级武器应全被分解，实际 ' + r.count);
 
-/* ---------- 6. 主动技能 ---------- */
-section('主动技能');
+/* ---------- 6. 职业属性与技能 ---------- */
+section('职业属性');
 CORE.setSeed(999);
-const sk = CORE.createState();
-for (let i = 0; i < 60; i++) CORE.tick(sk, 0.1);   // 先打一会儿，靠近怪
-const skEvs = CORE.useSkill(sk, 'whirlwind');
-ok(skEvs !== null, '旋风斩应能释放（附近有怪或至少产生事件）');
-ok(sk.run.skills.whirlwind > 0, '旋风斩应进入冷却');
-ok(CORE.useSkill(sk, 'whirlwind') === null, '冷却中不能再次释放');
-const berserkEvs = CORE.useSkill(sk, 'berserk');
+const sk = CORE.createState('warrior');
+const st1 = sk.stats;
+ok(st1.stats.str > 0 && st1.stats.agi > 0 && st1.stats.vit > 0 && st1.stats.int > 0, '四属性应存在');
+ok(st1.mainStat === 'str', '战士主属性应为力量');
+ok(sk.player.skills.length === 5, '默认 5 个技能位，实际 ' + sk.player.skills.length);
+console.log('  1 级四属性:', JSON.stringify(st1.stats), '| 攻击', st1.atk, '| 生命', st1.hpMax);
+const c50 = CORE.computeStats({ player: { cls: 'warrior', level: 50, stats: CORE.baseStats(50, 'warrior'), skills: [] }, equip: CORE.emptyEquip() });
+console.log('  50 级裸装: 攻击', c50.atk, '| 生命', c50.hpMax, '| 攻击间隔', c50.attackInterval.toFixed(2) + 's');
+ok(c50.atk > st1.atk * 5, '50 级攻击应远高于 1 级');
+
+section('技能释放');
+for (let i = 0; i < 80; i++) CORE.tick(sk, 0.1);   // 先打一会儿攒怒气、靠近怪
+sk.player.rage = 100;
+sk.run.gcd = 0;
+const skEvs = CORE.castSkillSlot(sk, 0);
+ok(skEvs !== null, '旋风斩（技能槽 0）应能释放');
+ok(sk.player.rage < 100, '释放技能应消耗怒气');
+sk.run.gcd = 0;
+const again = CORE.castSkillSlot(sk, 0);
+ok(again === null || sk.player.rage < 25, '怒气不足或 GCD 中不能连续释放');
+const berserkSlot = sk.player.skills.indexOf('recklessness');
+sk.run.gcd = 0;
+sk.run.skillCds.recklessness = 0;
+sk.player.rage = 100;
+const berserkEvs = CORE.castSkillSlot(sk, berserkSlot);
 ok(berserkEvs !== null, '狂暴应能释放');
 ok(sk.run.buffs.berserk > 0, '狂暴 buff 应生效');
 console.log('  旋风斩事件数:', skEvs ? skEvs.length : 0, '| 狂暴 buff 剩余:', sk.run.buffs.berserk.toFixed(1) + 's');

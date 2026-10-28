@@ -464,3 +464,44 @@ button.skill-btn.cooling {
   0%, 100% { box-shadow: 0 0 12px -4px rgba(200, 160, 60, 0.75); }
   50% { box-shadow: 0 0 16px -2px rgba(200, 160, 60, 0.95); }
 }
+/* 资源条 */
+.res-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 2px 12px 8px;
+  font-size: 11px;
+}
+.res-label { color: #a05a3a; letter-spacing: 1px; white-space: nowrap; }
+.res-track {
+  flex: 1; height: 9px;
+  background: #0c0906;
+  border: 1px solid #3a2c1d;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.res-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(180deg, #d8641a, #8a2a08);
+  transition: width 0.12s linear;
+}
+.res-text { color: #a07050; font-size: 10px; min-width: 52px; text-align: right; }
+
+/* 技能栏 5 格 */
+#skillBar { gap: 4px; }
+button.skill-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 2px;
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0;
+  border-color: #3a2c1d;
+  color: #7a6a54;
+  background: linear-gradient(180deg, #1a140e, #0e0a07);
+  white-space: nowrap;
+  overflow: hidden;
+}
+button.skill-btn.passive {
+  color: #6a7a6a;
+  border-color: #2a3a2a;
+  cursor: default;
+}

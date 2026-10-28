@@ -214,17 +214,23 @@
       }
     });
 
-    // 主动技能
-    function castSkill(key) {
-      const evs = C.useSkill(state, key);
+    // 主动技能（5 个槽位）
+    function castSlot(index) {
+      const evs = C.castSkillSlot(state, index);
       if (!evs) return;
       for (const ev of evs) handleEvent(ev);
       UI.markDirty();
       UI.update(state, true);
     }
-    if (els.btnSkill1) els.btnSkill1.onclick = function () { castSkill('whirlwind'); };
-    if (els.btnSkill2) els.btnSkill2.onclick = function () { castSkill('charge'); };
-    if (els.btnSkill3) els.btnSkill3.onclick = function () { castSkill('berserk'); };
+    if (els.skillBar) {
+      els.skillBar.addEventListener('click', function (e) {
+        const btn = e.target.closest('.skill-btn');
+        if (!btn || btn.disabled) return;
+        const slot = btn.dataset.slot;
+        if (slot === undefined) return;
+        castSlot(Number(slot));
+      });
+    }
 
     // 音效开关
     const btnSound = document.getElementById('btnSound');
@@ -246,9 +252,7 @@
     window.addEventListener('keydown', function (e) {
       if (e.key === 'b' || e.key === 'B') els.btnChest.click();
       if (e.key === 's' || e.key === 'S') els.btnSalvage.click();
-      if (e.key === '1') castSkill('whirlwind');
-      if (e.key === '2') castSkill('charge');
-      if (e.key === '3') castSkill('berserk');
+      if (e.key >= '1' && e.key <= '5') castSlot(Number(e.key) - 1);
     });
 
     // 页面关闭前存盘

@@ -40,8 +40,8 @@
   }
 
   /* ==================== 常量 ==================== */
-  const VERSION = 2;
-  const SAVE_KEY = 'diablo_idle_save_v2';
+  const VERSION = 3;
+  const SAVE_KEY = 'diablo_idle_save_v3';
 
   const BASE = { atk: 8, hp: 100, def: 0, crit: 5, critDmg: 150 };
   const PLAYER_ATK_INTERVAL = 0.9;
@@ -67,15 +67,15 @@
 
   const QUALITY_MULT = { normal: 1.0, magic: 1.15, rare: 1.32, legendary: 1.5, unique: 1.75 };
 
-  /* ==================== 主动技能 ==================== */
-  const SKILLS = {
-    whirlwind: { key: '1', name: '旋风斩', cd: 9,  desc: '对 3.6 格内所有敌人造成 260% 伤害' },
-    charge:    { key: '2', name: '冲锋',   cd: 14, desc: '冲向目标并击伤路径上的敌人（180%）' },
-    berserk:   { key: '3', name: '狂暴',   cd: 26, desc: '8 秒内攻速 +80%、攻击力 +35%' },
-  };
+  /* ==================== 技能与资源 ==================== */
+  const GLOBAL_CAST_CD = 0.4;      // 公共施法间隔
+  const RAGE_MAX = 100;
+  const RAGE_ON_HIT = 2;           // 命中获得怒气
+  const RAGE_ON_HURT = 4;          // 受击获得怒气
   const BERSERK_DURATION = 8;
   const BERSERK_ATK_MUL = 1.35;
   const BERSERK_SPEED_MUL = 1.8;
+  const CLASS_DEFAULT = 'warrior';
 
   /* ==================== 装备 ==================== */
   function rollQuality(magicFind) {
@@ -169,14 +169,68 @@
   }
 
   /* ==================== 属性 ==================== */
+  /** 某等级下的基础四属性（不含装备加成） */
+  function baseStats(level, clsKey) {
+    const c = DATA.CLASSES[clsKey] || DATA.CLASSES[CLASS_DEFAULT];
+    const keys = ['str', 'agi', 'vit', 'int'];
+    const out = {};
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      out[k] = Math.round((c.base[k] + Math.max(0, level - 1) * c.growth[k]) * 10) / 10;
+    }
+    return out;
+  }
+
+  /** 已装配被动技能带来的面板加成（按等级线性成长） */
+  function passiveBonuses(state) {
+    const p = state.player;
+    const lv = Math.max(1, Math.min(p.level, DATA.PASSIVE_MAX_LEVEL));
+    const t = (lv - 1) / Math.max(1, DATA.PASSIVE_MAX_LEVEL - 1);
+    const out = { crit: 0, critDmg: 0, lifesteal: 0, splash: 0, secondChance: 0, secondDmg: 0 };
+    const pool = p.skills || [];
+    const lerp = function (a) { return a[0] + (a[1] - a[0]) * t; };
+    for (let i = 0; i < pool.length; i++) {
+      const g = DATA.PASSIVE_GROWTH[pool[i]];
+      if (!g) continue;
+      if (g.crit) out.crit += lerp(g.crit);
+      if (g.critDmg) out.critDmg += lerp(g.critDmg);
+      if (g.lifesteal) out.lifesteal += lerp(g.lifesteal);
+      if (g.splash) out.splash += lerp(g.splash);
+      if (g.chance) out.secondChance += lerp(g.chance);
+      if (g.dmg) out.secondDmg = lerp(g.dmg);
+    }
+    return out;
+  }
+
   function computeStats(state) {
     const p = state.player;
+    const cls = DATA.CLASSES[p.cls || CLASS_DEFAULT] || DATA.CLASSES[CLASS_DEFAULT];
+    const S = DATA.STAT_COEF;
+
+    // 1. 四属性 = 等级成长 + 装备属性词条
+    const st = Object.assign({}, p.stats || baseStats(p.level, p.cls));
+    const pas = passiveBonuses(state);
+
     const s = {
-      atk: playerBaseAtk(p.level),
-      hpMax: playerBaseHp(p.level),
-      def: 0, crit: BASE.crit, critDmg: BASE.critDmg,
-      atkSpeedPct: 0, lifesteal: 0, goldFind: 0, magicFind: 0, splash: 0, splashRadiusPct: 0,
+      stats: st,
+      mainStat: cls.mainStat,
+      atk: BASE.atk + st[cls.mainStat] * cls.atkCoef,
+      hpMax: BASE.hp + st.vit * S.vit.hpPerPoint,
+      def: st.agi * S.agi.armorPerPoint,
+      crit: BASE.crit + pas.crit,
+      critDmg: BASE.critDmg + pas.critDmg,
+      atkSpeedPct: st.agi * S.agi.atkSpeedPerPoint,
+      lifesteal: pas.lifesteal,
+      goldFind: 0, magicFind: 0,
+      splash: pas.splash, splashRadiusPct: 0,
+      mpMax: Math.round(st.int * S.int.mpPerPoint),
+      mpRegen: st.int * S.int.mpRegenPerPoint,
+      skillEffect: Math.round(st.int * S.int.skillEffectPerPoint * 10) / 10,
+      secondChance: pas.secondChance,
+      secondDmg: pas.secondDmg,
     };
+
+    // 2. 装备词条叠加
     for (let i = 0; i < DATA.SLOT_KEYS.length; i++) {
       const it = state.equip[DATA.SLOT_KEYS[i]];
       if (!it) continue;
@@ -199,6 +253,7 @@
         }
       }
     }
+
     s.atk = Math.round(s.atk * 10) / 10;
     s.hpMax = Math.round(s.hpMax);
     s.def = Math.round(s.def * 10) / 10;
@@ -208,8 +263,10 @@
     s.splash = Math.min(100, Math.round(s.splash * 10) / 10);
     s.splashRadius = Math.round(SPLASH_BASE_RADIUS * (1 + s.splashRadiusPct / 100) * 100) / 100;
     s.attackInterval = PLAYER_ATK_INTERVAL / (1 + s.atkSpeedPct / 100);
+    s.secondChance = Math.round(s.secondChance * 10) / 10;
     return s;
   }
+
 
   /* ==================== 怪物 ==================== */
   function createMonster(floor, x, y, isBoss) {
@@ -255,16 +312,22 @@
     return e;
   }
 
-  function createState() {
+  function createState(clsKey) {
+    const cls = DATA.CLASSES[clsKey] ? clsKey : CLASS_DEFAULT;
+    const def = DATA.CLASSES[cls];
     const state = {
       version: VERSION,
       player: {
+        cls: cls,
         level: 1, exp: 0, expNext: expToNext(1), hp: 100,
         gold: 0, floor: 1, kills: 0, deaths: 0, bestFloor: 1,
+        stats: baseStats(1, cls),
+        rage: 0, rageMax: RAGE_MAX,
+        skills: def.defaultSkills.slice(),
       },
       equip: emptyEquip(),
       bag: [],
-      mode: { autoEquip: true, autoSell: true },
+      mode: { autoEquip: true, autoSell: true, autoCast: true },
       log: [],
       lastSave: Date.now(),
       stats: null,
@@ -272,8 +335,9 @@
     };
     state.stats = computeStats(state);
     state.player.hp = state.stats.hpMax;
+    state.player.rage = 0;
     enterFloor(state, 1);
-    pushLog(state, '你踏入「' + floorName(1) + '」，火把在石壁上摇曳。', '');
+    pushLog(state, '你以「' + def.name + '」的身份踏入「' + floorName(1) + '」。', '');
     return state;
   }
 
@@ -294,7 +358,8 @@
       boss: null,
       target: null,
       blacklist: {},
-      skills: { whirlwind: 0, charge: 0, berserk: 0 },
+      skillCds: {},
+      gcd: 0,
       buffs: { berserk: 0 },
     };
     for (let i = 0; i < map.spawns.length; i++) {
@@ -336,6 +401,7 @@
       p.exp -= p.expNext;
       p.level += 1;
       p.expNext = expToNext(p.level);
+      p.stats = baseStats(p.level, p.cls);
       state.stats = computeStats(state);
       p.hp = state.stats.hpMax;
       pushLog(state, '升到 ' + p.level + ' 级！', 'log-levelup');
@@ -473,6 +539,9 @@
     r.swingX = r.pos.x;
     r.swingY = r.pos.y;
 
+    // 普通攻击命中获得怒气
+    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + RAGE_ON_HIT);
+
     const atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
     const atk = s.atk * atkMul;
 
@@ -484,6 +553,16 @@
     events.push({ type: 'swing', x: r.pos.x, y: r.pos.y, count: 1 + (s.splash > 0 ? 1 : 0) });
     events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, main: true });
     if (m.hp <= 0) killMonster(state, m, events);
+
+    // 二次打击（被动）：对主目标追加一次攻击
+    if (m.alive && s.secondChance > 0 && rng() * 100 < s.secondChance) {
+      const extra = rollDamage(atk * (s.secondDmg || 0.5), s.crit, s.critDmg);
+      m.hp -= extra.dmg;
+      m.hurtT = 0.25;
+      totalLeech += extra.dmg;
+      events.push({ type: 'hit', monster: m, dmg: extra.dmg, crit: extra.crit, extra: true });
+      if (m.hp <= 0) killMonster(state, m, events);
+    }
 
     // 溅射：以主目标为圆心
     let splashCount = 0;
@@ -513,6 +592,128 @@
     return true;
   }
 
+  /* ==================== 技能释放 ==================== */
+  /** 释放第 index 个技能槽（0~4），失败返回 null */
+  function castSkillSlot(state, index) {
+    const p = state.player;
+    const r = state.run;
+    if (!r) return null;
+    const key = (p.skills || [])[index];
+    if (!key) return null;
+    const def = DATA.SKILLS[key];
+    if (!def || def.type !== 'active') return null;
+    if ((r.gcd || 0) > 0) return null;
+    if ((r.skillCds[key] || 0) > 0) return null;
+    if ((p.rage || 0) < def.cost) return null;
+
+    const s = state.stats;
+    const events = [];
+    const atkMul = (r.buffs && r.buffs.berserk > 0) ? BERSERK_ATK_MUL : 1;
+    const atk = s.atk * atkMul * (1 + (s.skillEffect || 0) / 100);
+    const pos = { x: r.pos.x, y: r.pos.y };
+
+    if (def.range === 'buff') {
+      r.buffs.berserk = BERSERK_DURATION;
+      events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, duration: BERSERK_DURATION });
+
+    } else if (def.range === 'single') {
+      const t = pickMainTarget(r);
+      if (!t) return null;
+      const hit = rollDamage(atk * def.dmg, s.crit, s.critDmg);
+      t.hp -= hit.dmg;
+      t.hurtT = 0.25;
+      events.push({ type: 'hit', monster: t, dmg: hit.dmg, crit: hit.crit, skill: true });
+      if (def.dot && t.alive) {
+        t.dot = { dps: atk * def.dot.ratio, dur: def.dot.dur };
+        events.push({ type: 'dot', monster: t, dur: def.dot.dur });
+      }
+      if (t.hp <= 0) killMonster(state, t, events);
+      events.push({ type: 'skill', key: key, x: t.x, y: t.y });
+
+    } else if (def.range === 'charge') {
+      const near = nearestMonster(r, 12, r.blacklist, true);
+      if (!near) return null;
+      const t = near.monster;
+      const dx = t.x - pos.x, dy = t.y - pos.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const travel = Math.min(4, Math.max(0, d - 1.3));
+      if (travel > 0.2) {
+        const nx = pos.x + (dx / d) * travel;
+        const ny = pos.y + (dy / d) * travel;
+        if (MAP.isWalkable(r.map, Math.floor(nx), Math.floor(ny))) {
+          r.pos.x = nx;
+          r.pos.y = ny;
+          r.path = [];
+          MAP.reveal(r.map, nx, ny, 5);
+        }
+      }
+      let n = 0;
+      for (let i = 0; i < r.monsters.length; i++) {
+        const m = r.monsters[i];
+        if (!m.alive) continue;
+        if (dist(m, r.pos) > def.radius) continue;
+        const hit = rollDamage(atk * def.dmg, s.crit, s.critDmg);
+        m.hp -= hit.dmg;
+        m.hurtT = 0.25;
+        n++;
+        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
+        if (m.hp <= 0) killMonster(state, m, events);
+      }
+      events.push({ type: 'skill', key: key, x: r.pos.x, y: r.pos.y, count: n });
+
+    } else if (def.range === 'aoe') {
+      let n = 0;
+      for (let i = 0; i < r.monsters.length; i++) {
+        const m = r.monsters[i];
+        if (!m.alive) continue;
+        if (dist(m, pos) > def.radius) continue;
+        const hit = rollDamage(atk * def.dmg, s.crit, s.critDmg);
+        m.hp -= hit.dmg;
+        m.hurtT = 0.25;
+        n++;
+        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
+        if (m.hp <= 0) killMonster(state, m, events);
+      }
+      if (n === 0) return null;
+      events.push({ type: 'skill', key: key, x: pos.x, y: pos.y, radius: def.radius, count: n });
+
+    } else {
+      return null;
+    }
+
+    p.rage = Math.max(0, (p.rage || 0) - def.cost);
+    r.skillCds[key] = def.cd || 0;
+    r.gcd = GLOBAL_CAST_CD;
+    return events;
+  }
+
+  /** 自动施法：按技能槽顺序找第一个能放的 */
+  function autoCast(state) {
+    const r = state.run;
+    if (!r) return null;
+    if ((r.gcd || 0) > 0) return null;
+    const p = state.player;
+    const skills = p.skills || [];
+    for (let i = 0; i < skills.length; i++) {
+      const key = skills[i];
+      const def = DATA.SKILLS[key];
+      if (!def || def.type !== 'active') continue;
+      if ((r.skillCds[key] || 0) > 0) continue;
+      if ((p.rage || 0) < def.cost) continue;
+      if (def.range === 'buff') {
+        if (!nearestMonster(r, 8)) continue;
+      } else if (def.range === 'single') {
+        if (!nearestMonster(r, PLAYER_ATTACK_RANGE)) continue;
+      } else if (def.range === 'aoe') {
+        if (!nearestMonster(r, def.radius)) continue;
+      } else if (def.range === 'charge') {
+        if (!nearestMonster(r, 10)) continue;
+      }
+      const evs = castSkillSlot(state, i);
+      if (evs) return evs;
+    }
+    return null;
+  }
   function killMonster(state, m, events) {
     m.alive = false;
     m.hp = 0;
@@ -533,75 +734,6 @@
       events.push({ type: 'drop', item: item, x: m.x, y: m.y });
       handleDrop(state, item, events);
     }
-  }
-
-  /** 释放主动技能，返回事件数组（失败返回 null 且不进入冷却） */
-  function useSkill(state, key) {
-    const r = state.run;
-    if (!r || !SKILLS[key]) return null;
-    if (r.skills && r.skills[key] > 0) return null;
-
-    const s = state.stats;
-    const p = r.pos;
-    const events = [];
-
-    if (key === 'whirlwind') {
-      const RAD = 3.6;
-      let n = 0;
-      for (let i = 0; i < r.monsters.length; i++) {
-        const m = r.monsters[i];
-        if (!m.alive) continue;
-        if (dist(m, p) > RAD) continue;
-        const hit = rollDamage(s.atk * 2.6, s.crit, s.critDmg);
-        m.hp -= hit.dmg;
-        m.hurtT = 0.25;
-        n++;
-        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
-        if (m.hp <= 0) killMonster(state, m, events);
-      }
-      events.push({ type: 'skill', key: key, x: p.x, y: p.y, radius: RAD, count: n });
-
-    } else if (key === 'charge') {
-      const near = nearestMonster(r, 12, r.blacklist, true);
-      if (!near) return null;
-      const t = near.monster;
-      const dx = t.x - p.x, dy = t.y - p.y;
-      const d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const travel = Math.min(4, Math.max(0, d - 1.3));
-      let moved = false;
-      if (travel > 0.2) {
-        const nx = p.x + (dx / d) * travel;
-        const ny = p.y + (dy / d) * travel;
-        if (MAP.isWalkable(r.map, Math.floor(nx), Math.floor(ny))) {
-          p.x = nx;
-          p.y = ny;
-          r.path = [];
-          r.target = t;
-          MAP.reveal(r.map, p.x, p.y, 5);
-          moved = true;
-        }
-      }
-      let n = 0;
-      for (let i = 0; i < r.monsters.length; i++) {
-        const m = r.monsters[i];
-        if (!m.alive) continue;
-        if (dist(m, p) > 2.3) continue;
-        const hit = rollDamage(s.atk * 1.8, s.crit, s.critDmg);
-        m.hp -= hit.dmg;
-        m.hurtT = 0.25;
-        n++;
-        events.push({ type: 'hit', monster: m, dmg: hit.dmg, crit: hit.crit, skill: true });
-        if (m.hp <= 0) killMonster(state, m, events);
-      }
-      events.push({ type: 'skill', key: key, x: p.x, y: p.y, radius: 2.3, count: n, moved: moved });
-
-    } else if (key === 'berserk') {
-      r.buffs.berserk = BERSERK_DURATION;
-      events.push({ type: 'skill', key: key, x: p.x, y: p.y, duration: BERSERK_DURATION });
-    }
-
-    r.skills[key] = SKILLS[key].cd;
-    return events;
   }
 
   /* ---------- 怪物 AI ---------- */
@@ -639,6 +771,7 @@
     let dmg = m.atk * (1 - reduce) * (1 + rnd(-0.1, 0.1));
     dmg = Math.max(1, Math.round(dmg));
     state.player.hp -= dmg;
+    state.player.rage = Math.min(state.player.rageMax, (state.player.rage || 0) + RAGE_ON_HURT);
     m.attackAnim = 0.3;
     events.push({ type: 'playerHurt', dmg: dmg, source: m });
   }
@@ -696,14 +829,18 @@
     moveAlong(state, dt);
     if (r.swingT > 0) r.swingT = Math.max(0, r.swingT - dt);
 
-    // 技能冷却与 buff
-    if (r.skills) {
-      for (const k in r.skills) if (r.skills[k] > 0) r.skills[k] = Math.max(0, r.skills[k] - dt);
-    } else {
-      r.skills = { whirlwind: 0, charge: 0, berserk: 0 };
-    }
+    // 技能冷却 / 公共施法间隔 / buff
+    if (!r.skillCds) r.skillCds = {};
     if (!r.buffs) r.buffs = { berserk: 0 };
+    if (r.gcd > 0) r.gcd = Math.max(0, r.gcd - dt);
+    for (const k in r.skillCds) if (r.skillCds[k] > 0) r.skillCds[k] = Math.max(0, r.skillCds[k] - dt);
     if (r.buffs.berserk > 0) r.buffs.berserk = Math.max(0, r.buffs.berserk - dt);
+
+    // 自动施法（优先于普通攻击）
+    if (state.mode.autoCast) {
+      const castEvs = autoCast(state);
+      if (castEvs) for (let ci = 0; ci < castEvs.length; ci++) events.push(castEvs[ci]);
+    }
 
     // 玩家攻击
     r.attackCd -= dt;
@@ -723,6 +860,13 @@
       aliveCount++;
       if (m.hurtT > 0) m.hurtT -= dt;
       if (m.attackAnim > 0) m.attackAnim -= dt;
+
+      // 持续伤害（致死打击的重伤）
+      if (m.dot && m.dot.dur > 0) {
+        m.dot.dur -= dt;
+        m.hp -= m.dot.dps * dt;
+        if (m.hp <= 0) { killMonster(state, m, events); continue; }
+      }
 
       const d = dist(m, r.pos);
       if (d > MONSTER_AGGRO_RANGE) continue;
@@ -839,6 +983,15 @@
       if (!data || data.version !== VERSION) return null;
       const state = createState();
       state.player = Object.assign(state.player, data.player || {});
+      if (!state.player.cls || !DATA.CLASSES[state.player.cls]) state.player.cls = CLASS_DEFAULT;
+      if (!state.player.stats || typeof state.player.stats.str !== 'number') {
+        state.player.stats = baseStats(state.player.level || 1, state.player.cls);
+      }
+      if (!Array.isArray(state.player.skills) || !state.player.skills.length) {
+        state.player.skills = DATA.CLASSES[state.player.cls].defaultSkills.slice();
+      }
+      if (typeof state.player.rage !== 'number') state.player.rage = 0;
+      if (!state.player.rageMax) state.player.rageMax = RAGE_MAX;
       state.equip = Object.assign(emptyEquip(), data.equip || {});
       state.bag = Array.isArray(data.bag) ? data.bag : [];
       state.mode = Object.assign(state.mode, data.mode || {});
@@ -881,9 +1034,15 @@
     SAVE_KEY: SAVE_KEY,
     BASE: BASE,
     PLAYER_ATTACK_RANGE: PLAYER_ATTACK_RANGE,
-    SKILLS: SKILLS,
+    CLASSES: DATA.CLASSES,
+    CLASS_DEFAULT: CLASS_DEFAULT,
+    SKILLS: DATA.SKILLS,
     BERSERK_DURATION: BERSERK_DURATION,
-    useSkill: useSkill,
+    RAGE_MAX: RAGE_MAX,
+    baseStats: baseStats,
+    passiveBonuses: passiveBonuses,
+    castSkillSlot: castSkillSlot,
+    autoCast: autoCast,
     setSeed: setSeed,
     rng: rng,
     rnd: rnd,

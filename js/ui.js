@@ -1090,9 +1090,9 @@
     els.btnAutoSell = $('btnAutoSell');
     els.btnSalvage = $('btnSalvage');
     els.btnReset = $('btnReset');
-    els.btnSkill1 = $('btnSkill1');
-    els.btnSkill2 = $('btnSkill2');
-    els.btnSkill3 = $('btnSkill3');
+    els.skillBar = $('skillBar');
+    els.rageFill = $('rageFill');
+    els.rageText = $('rageText');
     tooltipEl = $('tooltip');
     Scene.init($('scene'));
   }
@@ -1100,7 +1100,12 @@
   function renderStats(state) {
     const s = state.stats;
     const dps = s.atk / s.attackInterval;
+    const st = s.stats || {};
     const rows = [
+      ['力量', fmt(st.str || 0), 'up'],
+      ['敏捷', fmt(st.agi || 0), 'up'],
+      ['体力', fmt(st.vit || 0), 'up'],
+      ['智力', fmt(st.int || 0), 'up'],
       ['攻击力', fmt(s.atk), 'up'],
       ['生命值', fmt(Math.round(state.player.hp)) + ' / ' + fmt(s.hpMax), ''],
       ['防御', fmt(s.def), ''],
@@ -1185,31 +1190,45 @@
       els.floorProgress.textContent = alive > 0 ? ('剩余 ' + alive + ' 只') : '已清空 · 找出口';
     }
     els.bestFloor.textContent = '最深：第 ' + p.bestFloor + ' 层';
+    const rage = p.rage || 0;
+    const rageMax = p.rageMax || 100;
+    if (els.rageFill) els.rageFill.style.width = Math.min(100, (rage / rageMax) * 100) + '%';
+    if (els.rageText) els.rageText.textContent = Math.floor(rage) + ' / ' + rageMax;
     const price = C.chestPrice(p.floor);
     els.btnChest.textContent = '开宝箱 · ' + fmt(price);
     els.btnChest.disabled = p.gold < price;
   }
 
   function renderSkills(state) {
-    if (!els.btnSkill1) return;
+    if (!els.skillBar) return;
+    const p = state.player;
     const r = state.run;
-    const list = [['whirlwind', els.btnSkill1], ['charge', els.btnSkill2], ['berserk', els.btnSkill3]];
-    for (let i = 0; i < list.length; i++) {
-      const key = list[i][0];
-      const btn = list[i][1];
-      const def = C.SKILLS[key];
-      if (!def || !btn) continue;
-      const cd = (r && r.skills && r.skills[key]) || 0;
-      if (cd > 0.05) {
-        btn.textContent = def.name + ' ' + Math.ceil(cd);
-        btn.className = 'skill-btn cooling';
-        btn.disabled = true;
-      } else {
-        btn.textContent = def.name;
-        btn.className = 'skill-btn ready';
-        btn.disabled = false;
+    const skills = p.skills || [];
+    const rage = p.rage || 0;
+    let html = '';
+    for (let i = 0; i < 5; i++) {
+      const key = skills[i];
+      const def = key ? C.SKILLS[key] : null;
+      if (!def) {
+        html += '<button class="skill-btn" disabled>—</button>';
+        continue;
       }
+      if (def.type === 'passive') {
+        html += '<button class="skill-btn passive" title="' + def.desc + '">' + def.name +
+          '<br><span style="opacity:.55">被动</span></button>';
+        continue;
+      }
+      const cd = (r && r.skillCds && r.skillCds[key]) || 0;
+      const canCast = cd <= 0.05 && rage >= def.cost;
+      let sub;
+      if (cd > 0.05) sub = Math.ceil(cd) + 's';
+      else if (rage < def.cost) sub = '怒气不足';
+      else sub = def.cost + ' 怒气';
+      html += '<button class="skill-btn ' + (canCast ? 'ready' : 'cooling') + '" data-slot="' + i +
+        '" title="' + def.desc + '">' + def.name +
+        '<br><span style="opacity:.75">' + sub + '</span></button>';
     }
+    els.skillBar.innerHTML = html;
   }
 
   let bannerTimer = null;
